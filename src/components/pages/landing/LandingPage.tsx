@@ -50,8 +50,13 @@ export function LandingPage() {
     if (!gemsResponse?.success || !gemsResponse.data?.data) return 0;
     const gems = gemsResponse.data.data;
     if (gems.length === 0) return 0;
-    const sum = gems.reduce((acc, gem) => acc + (gem.ratingAvg || 0), 0);
-    return (sum / gems.length).toFixed(1);
+
+    // Filter out gems with 0 rating
+    const gemsWithRating = gems.filter((gem) => gem.ratingAvg > 0);
+    if (gemsWithRating.length === 0) return 0;
+
+    const sum = gemsWithRating.reduce((acc, gem) => acc + gem.ratingAvg, 0);
+    return (sum / gemsWithRating.length).toFixed(1);
   }, [gemsResponse]);
 
   const handleSearch = () => {

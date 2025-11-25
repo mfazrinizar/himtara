@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin,
@@ -40,6 +40,7 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [locationAddress, setLocationAddress] = useState<string>("");
 
   const { data: userResult } = useQuery({
     queryKey: ["auth-user"],
@@ -64,20 +65,74 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
   const reviews = reviewsResult?.success ? reviewsResult.data : [];
   const isLoading = gemLoading || reviewsLoading;
 
+  // Fetch location address from Google Maps Geocoding API
+  useEffect(() => {
+    if (gem?.coordinates?.lat && gem?.coordinates?.lng) {
+      const fetchAddress = async () => {
+        try {
+          const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+          const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${gem.coordinates.lat},${gem.coordinates.lng}&key=${apiKey}`;
+
+          const response = await fetch(url);
+          const data = await response.json();
+
+          if (data.status === "OK" && data.results && data.results.length > 0) {
+            // Get the formatted address or extract locality
+            const addressComponents = data.results[0].address_components;
+            const locality =
+              addressComponents.find((c: { types: string[] }) =>
+                c.types.includes("locality")
+              )?.long_name || "";
+            const adminArea =
+              addressComponents.find((c: { types: string[] }) =>
+                c.types.includes("administrative_area_level_1")
+              )?.long_name || "";
+
+            const address =
+              locality && adminArea
+                ? `${locality}, ${adminArea}`
+                : data.results[0].formatted_address;
+
+            setLocationAddress(address);
+          } else {
+            console.error(
+              "Geocoding API error:",
+              data.status,
+              data.error_message
+            );
+            setLocationAddress("Lokasi tidak tersedia");
+          }
+        } catch (error) {
+          console.error("Failed to fetch address:", error);
+          setLocationAddress("Lokasi tidak tersedia");
+        }
+      };
+      fetchAddress();
+    }
+  }, [gem?.coordinates?.lat, gem?.coordinates?.lng]);
+
   // Check if user has already reviewed this gem
   const hasUserReviewed =
     reviews?.some((review) => review.userId === user?.uid) || false;
 
   if (isLoading) {
-    return <GemDetailSkeleton />;
+    return (
+      <>
+        <Header />
+        <GemDetailSkeleton />
+      </>
+    );
   }
 
   if (!gem) {
     return (
-      <EmptyState
-        title="Destinasi Tidak Ditemukan"
-        description="Destinasi yang Anda cari tidak ditemukan."
-      />
+      <>
+        <Header />
+        <EmptyState
+          title="Destinasi Tidak Ditemukan"
+          description="Destinasi yang Anda cari tidak ditemukan."
+        />
+      </>
     );
   }
 
@@ -218,23 +273,32 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
           </div>
 
           {/* Gem Info */}
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            <div className="md:col-span-2 space-y-6 min-w-0">
               <div>
                 <h1 className="text-4xl font-bold text-text-primary mb-4">
                   {gem.name}
                 </h1>
-                <div className="flex items-center gap-4 text-text-secondary mb-4">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-5 h-5 fill-yellow-500 text-yellow-500" />
-                    <span className="font-semibold text-text-primary">
-                      {gem.ratingAvg.toFixed(2)}
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4 text-text-secondary mb-4">
+                  {gem.ratingAvg > 0 && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Star className="w-5 h-5 fill-yellow-500 text-yellow-500" />
+                      <span className="font-semibold text-text-primary">
+                        {gem.ratingAvg.toFixed(2)}
+                      </span>
+                      <span className="whitespace-nowrap">
+                        ({gem.reviewCount} ulasan)
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1 min-w-0 max-w-full sm:max-w-md">
+                    <MapPin className="w-5 h-5 flex-shrink-0" />
+                    <span
+                      className="truncate hover:overflow-visible hover:whitespace-normal hover:break-words transition-all cursor-help"
+                      title={locationAddress || "Memuat lokasi..."}
+                    >
+                      {locationAddress || "Memuat lokasi..."}
                     </span>
-                    <span>({gem.reviewCount} ulasan)</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-5 h-5" />
-                    <span>Nusa Penida, Bali</span>
                   </div>
                 </div>
                 <p className="text-text-secondary leading-relaxed">
@@ -344,7 +408,7 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
             </div>
 
             {/* Map Section */}
-            <div className="space-y-4">
+            <div className="space-y-4 min-w-0">
               <Card>
                 <CardHeader>
                   <CardTitle>Lokasi</CardTitle>
@@ -352,7 +416,7 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
                 <CardContent>
                   <div className="aspect-square rounded-xl overflow-hidden">
                     <iframe
-                      src={`https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&center=${gem.coordinates.lat},${gem.coordinates.lng}&zoom=16`}
+                      src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${gem.coordinates.lat},${gem.coordinates.lng}&zoom=16`}
                       width="100%"
                       height="100%"
                       style={{ border: 0 }}
@@ -366,179 +430,206 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
             </div>
           </div>
         </div>
+      </motion.div>
 
-        {/* Image Modal */}
-        <AnimatePresence>
-          {isModalOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
-              onClick={closeModal}
+      {/* Image Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center"
+            onClick={closeModal}
+          >
+            {/* Close Button */}
+            <motion.button
+              initial={{ scale: 0, rotate: -90 }}
+              animate={{ scale: 1, rotate: 0 }}
+              exit={{ scale: 0, rotate: 90 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                closeModal();
+              }}
+              className="absolute top-4 right-4 bg-white hover:bg-white/90 p-3 rounded-full transition-all hover:scale-110 z-[10000] shadow-2xl"
+              aria-label="Close modal"
             >
-              {/* Close Button */}
-              <motion.button
-                initial={{ scale: 0, rotate: -90 }}
-                animate={{ scale: 1, rotate: 0 }}
-                exit={{ scale: 0, rotate: 90 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                onClick={closeModal}
-                className="absolute top-4 right-4 bg-white hover:bg-white/90 p-3 rounded-full transition-all hover:scale-110 z-[60] shadow-2xl"
-                aria-label="Close modal"
-              >
-                <X className="w-6 h-6 text-black" />
-              </motion.button>
+              <X className="w-6 h-6 text-black" />
+            </motion.button>
 
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="relative w-full h-full flex items-center justify-center p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Zoom Controls */}
               <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="relative w-full h-full flex items-center justify-center p-4"
-                onClick={(e) => e.stopPropagation()}
+                initial={{ x: -50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -50, opacity: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+                className="absolute top-4 left-4 flex flex-col gap-2 z-[10000]"
               >
-                {/* Zoom Controls */}
-                <motion.div
-                  initial={{ x: -50, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: -50, opacity: 0 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                  className="absolute top-4 left-4 flex flex-col gap-2 z-10"
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    zoomIn();
+                  }}
+                  disabled={zoomLevel >= 3}
+                  className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm"
+                  aria-label="Zoom in"
                 >
-                  <button
-                    onClick={zoomIn}
-                    disabled={zoomLevel >= 3}
-                    className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm"
-                    aria-label="Zoom in"
+                  <ZoomIn className="w-6 h-6 text-white" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    zoomOut();
+                  }}
+                  disabled={zoomLevel <= 1}
+                  className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm"
+                  aria-label="Zoom out"
+                >
+                  <ZoomOut className="w-6 h-6 text-white" />
+                </button>
+                {zoomLevel > 1 && (
+                  <motion.button
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      resetZoom();
+                    }}
+                    className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-full transition-all hover:scale-110 text-white text-sm font-medium backdrop-blur-sm"
                   >
-                    <ZoomIn className="w-6 h-6 text-white" />
-                  </button>
-                  <button
-                    onClick={zoomOut}
-                    disabled={zoomLevel <= 1}
-                    className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm"
-                    aria-label="Zoom out"
+                    Reset
+                  </motion.button>
+                )}
+                <div className="bg-white/10 px-3 py-2 rounded-full text-white text-sm font-medium text-center backdrop-blur-sm">
+                  {Math.round(zoomLevel * 100)}%
+                </div>
+              </motion.div>
+
+              {/* Image Counter */}
+              <motion.div
+                initial={{ y: -50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -50, opacity: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+                className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/10 px-4 py-2 rounded-full text-white text-sm font-medium backdrop-blur-sm z-[10000]"
+              >
+                {modalImageIndex + 1} / {gem.images.length}
+              </motion.div>
+
+              {/* Navigation Buttons */}
+              {gem.images.length > 1 && (
+                <>
+                  <motion.button
+                    initial={{ x: -50, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: -50, opacity: 0 }}
+                    transition={{ duration: 0.3, delay: 0.15 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      prevModalImage();
+                    }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 p-3 rounded-full transition-all hover:scale-110 backdrop-blur-sm z-[10000]"
+                    aria-label="Previous image"
                   >
-                    <ZoomOut className="w-6 h-6 text-white" />
-                  </button>
-                  {zoomLevel > 1 && (
+                    <ChevronLeft className="w-8 h-8 text-white" />
+                  </motion.button>
+                  <motion.button
+                    initial={{ x: 50, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: 50, opacity: 0 }}
+                    transition={{ duration: 0.3, delay: 0.15 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      nextModalImage();
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 p-3 rounded-full transition-all hover:scale-110 backdrop-blur-sm z-[10000]"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="w-8 h-8 text-white" />
+                  </motion.button>
+                </>
+              )}
+
+              {/* Image */}
+              <div
+                className="overflow-auto max-w-full max-h-full flex items-center justify-center"
+                style={{
+                  maxHeight: "calc(100vh - 8rem)",
+                  cursor: zoomLevel > 1 ? "move" : "default",
+                }}
+              >
+                <motion.img
+                  key={modalImageIndex}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  src={gem.images[modalImageIndex]}
+                  alt={`${gem.name} - Image ${modalImageIndex + 1}`}
+                  className="max-w-full h-auto"
+                  style={{
+                    transform: `scale(${zoomLevel})`,
+                    transformOrigin: "center center",
+                    transition: "transform 0.2s ease-out",
+                  }}
+                />
+              </div>
+
+              {/* Thumbnail Gallery */}
+              {gem.images.length > 1 && (
+                <motion.div
+                  initial={{ y: 50, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 50, opacity: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                  className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 max-w-full overflow-x-auto px-4 pb-2 z-[10000]"
+                >
+                  {gem.images.map((image, index) => (
                     <motion.button
+                      key={index}
                       initial={{ scale: 0, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      onClick={resetZoom}
-                      className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-full transition-all hover:scale-110 text-white text-sm font-medium backdrop-blur-sm"
+                      transition={{
+                        duration: 0.2,
+                        delay: 0.3 + index * 0.05,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModalImageIndex(index);
+                        setZoomLevel(1);
+                      }}
+                      className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                        index === modalImageIndex
+                          ? "border-white scale-110"
+                          : "border-white/30 hover:border-white/60 hover:scale-105"
+                      }`}
                     >
-                      Reset
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={image}
+                        alt={`Thumbnail ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
                     </motion.button>
-                  )}
-                  <div className="bg-white/10 px-3 py-2 rounded-full text-white text-sm font-medium text-center backdrop-blur-sm">
-                    {Math.round(zoomLevel * 100)}%
-                  </div>
+                  ))}
                 </motion.div>
-
-                {/* Image Counter */}
-                <motion.div
-                  initial={{ y: -50, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -50, opacity: 0 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                  className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/10 px-4 py-2 rounded-full text-white text-sm font-medium backdrop-blur-sm"
-                >
-                  {modalImageIndex + 1} / {gem.images.length}
-                </motion.div>
-
-                {/* Navigation Buttons */}
-                {gem.images.length > 1 && (
-                  <>
-                    <motion.button
-                      initial={{ x: -50, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: -50, opacity: 0 }}
-                      transition={{ duration: 0.3, delay: 0.15 }}
-                      onClick={prevModalImage}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 p-3 rounded-full transition-all hover:scale-110 backdrop-blur-sm"
-                      aria-label="Previous image"
-                    >
-                      <ChevronLeft className="w-8 h-8 text-white" />
-                    </motion.button>
-                    <motion.button
-                      initial={{ x: 50, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: 50, opacity: 0 }}
-                      transition={{ duration: 0.3, delay: 0.15 }}
-                      onClick={nextModalImage}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 p-3 rounded-full transition-all hover:scale-110 backdrop-blur-sm"
-                      aria-label="Next image"
-                    >
-                      <ChevronRight className="w-8 h-8 text-white" />
-                    </motion.button>
-                  </>
-                )}
-
-                {/* Image */}
-                <div className="overflow-auto max-w-full max-h-full">
-                  <motion.img
-                    key={modalImageIndex}
-                    initial={{ scale: 0.8, opacity: 0, y: 20 }}
-                    animate={{ scale: zoomLevel, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.8, opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                    src={gem.images[modalImageIndex]}
-                    alt={`${gem.name} - Image ${modalImageIndex + 1}`}
-                    className="max-w-none"
-                    style={{
-                      transformOrigin: "center center",
-                    }}
-                  />
-                </div>
-
-                {/* Thumbnail Gallery */}
-                {gem.images.length > 1 && (
-                  <motion.div
-                    initial={{ y: 50, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 50, opacity: 0 }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
-                    className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 max-w-full overflow-x-auto px-4 pb-2"
-                  >
-                    {gem.images.map((image, index) => (
-                      <motion.button
-                        key={index}
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{
-                          duration: 0.2,
-                          delay: 0.3 + index * 0.05,
-                        }}
-                        onClick={() => {
-                          setModalImageIndex(index);
-                          setZoomLevel(1);
-                        }}
-                        className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                          index === modalImageIndex
-                            ? "border-white scale-110"
-                            : "border-white/30 hover:border-white/60 hover:scale-105"
-                        }`}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={image}
-                          alt={`Thumbnail ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </motion.button>
-                    ))}
-                  </motion.div>
-                )}
-              </motion.div>
+              )}
             </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
