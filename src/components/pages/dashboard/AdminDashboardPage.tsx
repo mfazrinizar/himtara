@@ -512,6 +512,35 @@ export function AdminDashboardPage() {
                                 </Button>
                               </>
                             )}
+                            {gem.status === "approved" && (
+                              <Button
+                                onClick={() =>
+                                  setRejectDialog({
+                                    open: true,
+                                    id: gem.id,
+                                    name: gem.name,
+                                  })
+                                }
+                                disabled={rejectMutation.isPending}
+                                variant="destructive"
+                                size="sm"
+                                className="w-full gap-2"
+                              >
+                                <XCircle className="w-4 h-4" />
+                                Ubah ke Ditolak
+                              </Button>
+                            )}
+                            {gem.status === "rejected" && (
+                              <Button
+                                onClick={() => handleApprove(gem.id)}
+                                disabled={approveMutation.isPending}
+                                size="sm"
+                                className="w-full bg-green-600 hover:bg-green-700 gap-2"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                                Ubah ke Disetujui
+                              </Button>
+                            )}
                           </div>
                         </motion.div>
                       ))}

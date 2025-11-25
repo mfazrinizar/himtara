@@ -9,8 +9,7 @@ import {
   searchGemsAction,
   getGemReviewsAction,
   getGemStatsAction,
-  adminApproveGemAction,
-  adminRejectGemAction,
+  adminUpdateGemStatusAction,
   type GemFilters,
   type PaginationParams,
 } from "@/actions/gems";
@@ -147,7 +146,7 @@ export function useApproveGem() {
   
   return useMutation({
     mutationFn: ({ id, verifiedBy }: { id: string; verifiedBy: string }) =>
-      adminApproveGemAction(id, verifiedBy),
+      adminUpdateGemStatusAction(id, "approved", verifiedBy),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["gem", variables.id] });
       queryClient.invalidateQueries({ queryKey: ["gems"] });
@@ -164,7 +163,7 @@ export function useRejectGem() {
   
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
-      adminRejectGemAction(id, reason),
+      adminUpdateGemStatusAction(id, "rejected", undefined, reason),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["gem", variables.id] });
       queryClient.invalidateQueries({ queryKey: ["gems"] });

@@ -578,6 +578,56 @@ export async function adminRejectGemAction(
 }
 
 /**
+ * Admin: Update gem status (can change from rejected to approved or vice versa)
+ */
+export async function adminUpdateGemStatusAction(
+  id: string,
+  status: "approved" | "rejected",
+  verifiedBy?: string,
+  reason?: string
+): Promise<ServerActionResult> {
+  try {
+    const gemRef = doc(db, "gems", id);
+    const gemDoc = await getDoc(gemRef);
+
+    if (!gemDoc.exists()) {
+      return {
+        success: false,
+        message: "Destinasi tidak ditemukan.",
+      };
+    }
+
+    const updateData: Record<string, unknown> = {
+      status,
+      updatedAt: serverTimestamp(),
+    };
+
+    if (status === "approved") {
+      updateData.verifiedBy = verifiedBy;
+      updateData.verifiedAt = serverTimestamp();
+      // Clear rejection reason when approving
+      updateData.rejectionReason = null;
+    } else if (status === "rejected") {
+      updateData.rejectionReason = reason || "Tidak memenuhi kriteria";
+    }
+
+    await updateDoc(gemRef, updateData);
+
+    const statusText = status === "approved" ? "disetujui" : "ditolak";
+    return {
+      success: true,
+      message: `Destinasi berhasil ${statusText}.`,
+    };
+  } catch (error) {
+    console.error("Error updating gem status:", error);
+    return {
+      success: false,
+      message: "Gagal mengubah status destinasi.",
+    };
+  }
+}
+
+/**
  * Get gem statistics for dashboard
  */
 export async function getGemStatsAction(): Promise<
