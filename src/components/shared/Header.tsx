@@ -46,7 +46,7 @@ export function Header() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden lg:flex items-center gap-6">
           <Link
             href="/"
             className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -83,7 +83,7 @@ export function Header() {
         </nav>
 
         {/* Desktop Actions */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           <ThemeToggle />
           {user ? (
             <>
@@ -113,7 +113,7 @@ export function Header() {
         </div>
 
         {/* Mobile Actions */}
-        <div className="flex md:hidden items-center gap-2">
+        <div className="flex lg:hidden items-center gap-2">
           <ThemeToggle />
           <Button
             variant="ghost"
@@ -127,7 +127,7 @@ export function Header() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background">
+        <div className="lg:hidden border-t border-border bg-background">
           <nav className="flex flex-col px-4 py-3 space-y-3">
             <Link
               href="/"

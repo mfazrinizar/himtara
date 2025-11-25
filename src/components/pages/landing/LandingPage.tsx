@@ -10,6 +10,7 @@ import {
   Users,
   Shield,
   Sparkles,
+  GemIcon,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import Link from "next/link";
@@ -193,6 +194,20 @@ export function LandingPage() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.8 }}
             >
+              {/* Brand Badge */}
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1, duration: 0.6 }}
+                className="inline-flex items-center gap-2 px-6 py-3 mb-6 rounded-full bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-emerald-500/20 border border-emerald-500/30 backdrop-blur-sm shadow-lg"
+              >
+                <GemIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-sm sm:text-base font-semibold bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 bg-clip-text text-transparent">
+                  HIMTARA - Hidden Gems Nusantara
+                </span>
+                <GemIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </motion.div>
+
               <motion.h1
                 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-3 sm:mb-4 px-4 bg-gradient-to-br from-foreground via-primary to-foreground bg-clip-text text-transparent drop-shadow-sm"
                 animate={{
@@ -405,7 +420,8 @@ export function LandingPage() {
                 Mengapa Memilih Himtara?
               </h2>
               <p className="text-muted-foreground text-lg">
-                Platform terpercaya untuk menemukan destinasi wisata tersembunyi
+                Hidden Gems Nusantara - Platform terpercaya untuk menemukan
+                destinasi wisata tersembunyi
               </p>
             </motion.div>
 

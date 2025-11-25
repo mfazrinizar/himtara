@@ -176,9 +176,9 @@ export function GemsListPage() {
 
 function GemCard({ gem }: { gem: Gem }) {
   return (
-    <Link href={`/gems/${gem.id}`} className="block">
-      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full group">
-        <div className="relative h-48 sm:h-56 bg-muted overflow-hidden">
+    <Link href={`/gems/${gem.id}`} className="block h-full">
+      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full group flex flex-col">
+        <div className="relative h-48 sm:h-56 bg-muted overflow-hidden flex-shrink-0">
           {gem.images && gem.images.length > 0 ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -191,21 +191,23 @@ function GemCard({ gem }: { gem: Gem }) {
               <MapPin className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground" />
             </div>
           )}
-          <div className="absolute top-3 sm:top-4 right-3 sm:right-4 bg-background/95 backdrop-blur-sm px-2.5 py-1.5 sm:px-3 rounded-full flex items-center gap-1 sm:gap-1.5 shadow-md">
-            <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400 text-amber-400" />
-            <span className="font-semibold text-xs sm:text-sm">
-              {gem.ratingAvg.toFixed(1)}
-            </span>
-          </div>
+          {gem.ratingAvg > 0 && (
+            <div className="absolute top-3 sm:top-4 right-3 sm:right-4 bg-background/95 backdrop-blur-sm px-2.5 py-1.5 sm:px-3 rounded-full flex items-center gap-1 sm:gap-1.5 shadow-md">
+              <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400 text-amber-400" />
+              <span className="font-semibold text-xs sm:text-sm">
+                {gem.ratingAvg.toFixed(1)}
+              </span>
+            </div>
+          )}
         </div>
-        <CardContent className="p-4 sm:p-5">
+        <CardContent className="p-4 sm:p-5 flex flex-col flex-grow">
           <h3 className="font-semibold text-base sm:text-lg text-foreground mb-1.5 sm:mb-2 line-clamp-1">
             {gem.name}
           </h3>
-          <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2">
+          <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 flex-grow">
             {gem.description}
           </p>
-          <div className="flex items-center justify-between text-xs sm:text-sm">
+          <div className="flex items-center justify-between text-xs sm:text-sm mt-auto">
             <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground">
               <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>{gem.reviewCount} ulasan</span>
