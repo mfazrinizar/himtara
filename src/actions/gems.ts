@@ -636,7 +636,7 @@ export async function adminUpdateGemStatusAction(
 }
 
 /**
- * Get gem statistics for dashboard
+ * Get gem statistics for dashboard (uses Admin SDK to bypass rules)
  */
 export async function getGemStatsAction(): Promise<
   ServerActionResult<{
@@ -644,17 +644,26 @@ export async function getGemStatsAction(): Promise<
     approved: number;
     pending: number;
     rejected: number;
+    avgRating: number;
   }>
 > {
   try {
-    const gemsSnapshot = await getDocs(collection(db, "gems"));
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const gemsSnapshot = await adminDb.collection("gems").get();
     const gems = gemsSnapshot.docs.map((doc) => doc.data() as Gem);
+
+    const approvedGems = gems.filter((g) => g.status === "approved");
+    const gemsWithRating = approvedGems.filter((g) => g.ratingAvg > 0);
+    const avgRating = gemsWithRating.length > 0
+      ? gemsWithRating.reduce((sum, g) => sum + g.ratingAvg, 0) / gemsWithRating.length
+      : 0;
 
     const stats = {
       total: gems.length,
-      approved: gems.filter((g) => g.status === "approved").length,
+      approved: approvedGems.length,
       pending: gems.filter((g) => g.status === "pending").length,
       rejected: gems.filter((g) => g.status === "rejected").length,
+      avgRating: Math.round(avgRating * 10) / 10, // Round to 1 decimal
     };
 
     return {

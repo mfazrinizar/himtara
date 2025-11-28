@@ -240,7 +240,7 @@ export async function updateUserStatusAction(
 }
 
 /**
- * Get user statistics
+ * Get user statistics (uses Admin SDK to bypass rules)
  */
 export async function getUserStatsAction(): Promise<
   ServerActionResult<{
@@ -252,7 +252,8 @@ export async function getUserStatsAction(): Promise<
   }>
 > {
   try {
-    const usersSnapshot = await getDocs(collection(db, "users"));
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const usersSnapshot = await adminDb.collection("users").get();
     const users = usersSnapshot.docs.map((doc) => doc.data() as User);
 
     const stats = {
