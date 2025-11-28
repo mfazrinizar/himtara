@@ -265,7 +265,7 @@ export function AdminDashboardPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950 py-12 px-4"
+        className="min-h-screen bg-gradient-to-br overflow-hidden from-slate-50 via-white to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950 py-12 px-4"
       >
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Header */}
@@ -279,32 +279,34 @@ export function AdminDashboardPage() {
           </div>
 
           {/* Main Tab Selector */}
-          <div className="flex gap-2 border-b-2 border-border pb-2">
-            <Button
-              variant={mainTab === "gems" ? "default" : "ghost"}
-              onClick={() => setMainTab("gems")}
-              className="gap-2"
-              size="lg"
-            >
-              <MapPin className="w-5 h-5" />
-              Kelola Destinasi
-            </Button>
-            <Button
-              variant={mainTab === "users" ? "default" : "ghost"}
-              onClick={() => setMainTab("users")}
-              className="gap-2"
-              size="lg"
-            >
-              <Users className="w-5 h-5" />
-              Kelola Pengguna
-            </Button>
+          <div className="overflow-x-auto pb-2 -mx-4 px-4">
+            <div className="flex gap-2 border-b-2 border-border pb-2 min-w-max">
+              <Button
+                variant={mainTab === "gems" ? "default" : "ghost"}
+                onClick={() => setMainTab("gems")}
+                className="gap-2 whitespace-nowrap"
+                size="lg"
+              >
+                <MapPin className="w-5 h-5" />
+                Kelola Destinasi
+              </Button>
+              <Button
+                variant={mainTab === "users" ? "default" : "ghost"}
+                onClick={() => setMainTab("users")}
+                className="gap-2 whitespace-nowrap"
+                size="lg"
+              >
+                <Users className="w-5 h-5" />
+                Kelola Pengguna
+              </Button>
+            </div>
           </div>
 
           {/* Gems Management Tab */}
           {mainTab === "gems" && (
             <>
               {/* Gems Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
                 <Card className="border-2 hover:shadow-lg transition-shadow bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 border-amber-200 dark:border-amber-800">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-sm font-medium text-amber-900 dark:text-amber-100">
@@ -365,31 +367,33 @@ export function AdminDashboardPage() {
               </div>
 
               {/* Gems Filter Tabs */}
-              <div className="flex gap-2 border-b border-border pb-2">
-                <Button
-                  variant={gemTab === "pending" ? "default" : "ghost"}
-                  onClick={() => setGemTab("pending")}
-                  className="gap-2"
-                >
-                  <Clock className="w-4 h-4" />
-                  Menunggu ({pendingGems?.data?.pagination.totalCount || 0})
-                </Button>
-                <Button
-                  variant={gemTab === "approved" ? "default" : "ghost"}
-                  onClick={() => setGemTab("approved")}
-                  className="gap-2"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Disetujui ({approvedGems?.data?.pagination.totalCount || 0})
-                </Button>
-                <Button
-                  variant={gemTab === "rejected" ? "default" : "ghost"}
-                  onClick={() => setGemTab("rejected")}
-                  className="gap-2"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Ditolak ({rejectedGems?.data?.pagination.totalCount || 0})
-                </Button>
+              <div className="overflow-x-auto pb-2 -mx-4 px-4">
+                <div className="flex gap-2 border-b border-border pb-2 min-w-max">
+                  <Button
+                    variant={gemTab === "pending" ? "default" : "ghost"}
+                    onClick={() => setGemTab("pending")}
+                    className="gap-2 whitespace-nowrap"
+                  >
+                    <Clock className="w-4 h-4" />
+                    Menunggu ({pendingGems?.data?.pagination.totalCount || 0})
+                  </Button>
+                  <Button
+                    variant={gemTab === "approved" ? "default" : "ghost"}
+                    onClick={() => setGemTab("approved")}
+                    className="gap-2 whitespace-nowrap"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Disetujui ({approvedGems?.data?.pagination.totalCount || 0})
+                  </Button>
+                  <Button
+                    variant={gemTab === "rejected" ? "default" : "ghost"}
+                    onClick={() => setGemTab("rejected")}
+                    className="gap-2 whitespace-nowrap"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Ditolak ({rejectedGems?.data?.pagination.totalCount || 0})
+                  </Button>
+                </div>
               </div>
 
               {/* Gems List */}
@@ -555,7 +559,7 @@ export function AdminDashboardPage() {
           {mainTab === "users" && (
             <>
               {/* Users Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
                 <Card className="border-2 hover:shadow-lg transition-shadow bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-sm font-medium text-blue-900 dark:text-blue-100">
@@ -600,31 +604,33 @@ export function AdminDashboardPage() {
               </div>
 
               {/* Users Filter Tabs */}
-              <div className="flex gap-2 border-b border-border pb-2">
-                <Button
-                  variant={userTab === "all" ? "default" : "ghost"}
-                  onClick={() => setUserTab("all")}
-                  className="gap-2"
-                >
-                  <Users className="w-4 h-4" />
-                  Semua ({allUsers.length})
-                </Button>
-                <Button
-                  variant={userTab === "admins" ? "default" : "ghost"}
-                  onClick={() => setUserTab("admins")}
-                  className="gap-2"
-                >
-                  <Shield className="w-4 h-4" />
-                  Admin ({adminUsers.length})
-                </Button>
-                <Button
-                  variant={userTab === "banned" ? "default" : "ghost"}
-                  onClick={() => setUserTab("banned")}
-                  className="gap-2"
-                >
-                  <UserX className="w-4 h-4" />
-                  Diblokir ({bannedUsers.length})
-                </Button>
+              <div className="overflow-x-auto pb-2 -mx-4 px-4">
+                <div className="flex gap-2 border-b border-border pb-2 min-w-max">
+                  <Button
+                    variant={userTab === "all" ? "default" : "ghost"}
+                    onClick={() => setUserTab("all")}
+                    className="gap-2 whitespace-nowrap"
+                  >
+                    <Users className="w-4 h-4" />
+                    Semua ({allUsers.length})
+                  </Button>
+                  <Button
+                    variant={userTab === "admins" ? "default" : "ghost"}
+                    onClick={() => setUserTab("admins")}
+                    className="gap-2 whitespace-nowrap"
+                  >
+                    <Shield className="w-4 h-4" />
+                    Admin ({adminUsers.length})
+                  </Button>
+                  <Button
+                    variant={userTab === "banned" ? "default" : "ghost"}
+                    onClick={() => setUserTab("banned")}
+                    className="gap-2 whitespace-nowrap"
+                  >
+                    <UserX className="w-4 h-4" />
+                    Diblokir ({bannedUsers.length})
+                  </Button>
+                </div>
               </div>
 
               {/* Users List */}

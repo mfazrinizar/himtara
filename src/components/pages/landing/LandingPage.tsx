@@ -186,7 +186,7 @@ export function LandingPage() {
               backgroundImage: `url(https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1920&q=80)`,
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background/90 backdrop-blur-[2px]"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background/90 backdrop-blur-[1px]"></div>
 
           <div className="relative max-w-6xl mx-auto text-center space-y-6 sm:space-y-8 w-full">
             <motion.div
@@ -316,7 +316,7 @@ export function LandingPage() {
               }}
               className="absolute bottom-8 left-1/2 -translate-x-1/2"
             >
-              <div className="w-6 h-10 border-2 border-muted-foreground/30 rounded-full flex items-start justify-center p-2">
+              <div className="w-6 h-10 border-muted-foreground/30 rounded-full flex items-start justify-center p-2">
                 <motion.div
                   animate={{ y: [0, 12, 0] }}
                   transition={{
@@ -494,12 +494,14 @@ function GemCard({ gem }: { gem: Gem }) {
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="absolute top-3 sm:top-4 right-3 sm:right-4 bg-background/95 backdrop-blur-sm px-2.5 py-1.5 sm:px-3 rounded-full flex items-center gap-1 shadow-lg">
-            <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400 text-amber-400" />
-            <span className="font-semibold text-xs sm:text-sm">
-              {gem.ratingAvg.toFixed(1)}
-            </span>
-          </div>
+          {gem.ratingAvg > 0 && (
+            <div className="absolute top-3 sm:top-4 right-3 sm:right-4 bg-background/95 backdrop-blur-sm px-2.5 py-1.5 sm:px-3 rounded-full flex items-center gap-1 shadow-lg">
+              <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400 text-amber-400" />
+              <span className="font-semibold text-xs sm:text-sm text-white">
+                {gem.ratingAvg.toFixed(1)}
+              </span>
+            </div>
+          )}
         </div>
         <CardContent className="p-3 sm:p-4">
           <h3 className="font-semibold text-base sm:text-lg text-foreground mb-1.5 sm:mb-2 line-clamp-1">
