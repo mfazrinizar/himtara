@@ -10,6 +10,10 @@ if (!admin.apps.length) {
       privateKey,
     }),
   });
+
+  admin.firestore().settings({
+    ignoreUndefinedProperties: true,
+  });
 }
 
 export const adminAuth = admin.auth();

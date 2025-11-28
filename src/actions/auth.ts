@@ -11,12 +11,92 @@ import {
 import { doc, setDoc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/client";
 import { signAccessToken, verifyAccessToken } from "@/lib/auth/jwt";
+import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import type { ServerActionResult, User } from "@/types/firestore";
 import type {
   LoginInput,
   RegisterInput,
   ForgotPasswordInput,
 } from "@/schemas";
+
+/**
+ * Refresh access token using refresh token
+ */
+export async function refreshTokenAction(): Promise<ServerActionResult<{ user: Partial<User> | null }>> {
+  try {
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get("x-refresh-token")?.value;
+
+    if (!refreshToken) {
+      return {
+        success: false,
+        message: "No refresh token",
+        data: { user: null },
+      };
+    }
+
+    // Verify refresh token with Firebase Admin
+    const decodedToken = await adminAuth.verifyIdToken(refreshToken);
+
+    // Get user data
+    const userDoc = await adminDb
+      .collection("users")
+      .doc(decodedToken.uid)
+      .get();
+    const userData = userDoc.data();
+
+    if (!userData) {
+      return {
+        success: false,
+        message: "User not found",
+        data: { user: null },
+      };
+    }
+
+    if (userData.status === "banned") {
+      return {
+        success: false,
+        message: "User banned",
+        data: { user: null },
+      };
+    }
+
+    // Create new access token
+    const newAccessToken = await signAccessToken({
+      uid: decodedToken.uid,
+      role: userData.role as "user" | "admin",
+      email_verified: decodedToken.email_verified || false,
+    });
+
+    // Set new access token cookie
+    cookieStore.set("x-access-token", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 15 * 60, // 15 minutes
+      path: "/",
+    });
+
+    return {
+      success: true,
+      message: "Token refreshed",
+      data: {
+        user: {
+          uid: userData.uid,
+          email: userData.email,
+          displayName: userData.displayName,
+          role: userData.role,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    return {
+      success: false,
+      message: "Failed to refresh token",
+      data: { user: null },
+    };
+  }
+}
 
 /**
  * Get current authenticated user from httpOnly cookies
@@ -27,6 +107,12 @@ export async function getCurrentUserAction(): Promise<ServerActionResult<{ user:
     const accessToken = cookieStore.get("x-access-token")?.value;
 
     if (!accessToken) {
+      // Try to refresh if we have a refresh token
+      const refreshResult = await refreshTokenAction();
+      if (refreshResult.success && refreshResult.data?.user) {
+        return refreshResult;
+      }
+      
       return {
         success: true,
         message: "No user logged in",
@@ -36,6 +122,12 @@ export async function getCurrentUserAction(): Promise<ServerActionResult<{ user:
 
     const payload = await verifyAccessToken(accessToken);
     if (!payload) {
+      // Access token expired, try to refresh
+      const refreshResult = await refreshTokenAction();
+      if (refreshResult.success && refreshResult.data?.user) {
+        return refreshResult;
+      }
+      
       return {
         success: true,
         message: "Invalid token",
@@ -43,14 +135,18 @@ export async function getCurrentUserAction(): Promise<ServerActionResult<{ user:
       };
     }
 
+    // Get full user data from Firestore
+    const userDoc = await getDoc(doc(db, "users", payload.uid));
+    const userData = userDoc.data() as User | undefined;
+
     return {
       success: true,
       message: "User retrieved",
       data: {
         user: {
           uid: payload.uid,
-          email: "",
-          displayName: "",
+          email: userData?.email || "",
+          displayName: userData?.displayName || "",
           role: payload.role,
         },
       },
