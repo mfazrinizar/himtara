@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
 import { useGemList } from "@/features/gems/hooks";
-import { useUserLocation } from "@/hooks/useUserLocation";
+import { useUserLocation } from "@/features/geo/useUserLocation";
 import { sortByDistance, formatDistance } from "@/lib/geo";
 
 type SortMode = "rating" | "nearest";
@@ -313,7 +313,7 @@ function GemCard({ gem, distance }: GemCardProps) {
               }}
             >
               <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400 text-amber-400" />
-              <span className="font-semibold text-xs sm:text-sm text-foreground">
+              <span className="font-semibold text-xs sm:text-sm text-white">
                 {gem.ratingAvg.toFixed(1)}
               </span>
             </div>
@@ -327,8 +327,8 @@ function GemCard({ gem, distance }: GemCardProps) {
                 backdropFilter: "blur(6px)",
               }}
             >
-              <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-foreground text-green-300" />
-              <span className="font-semibold text-xs sm:text-sm text-primary-foreground text-green-100">
+              <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-300" />
+              <span className="font-semibold text-xs sm:text-sm text-green-100">
                 {formatDistance(distance)}
               </span>
             </div>

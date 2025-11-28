@@ -28,7 +28,7 @@ import { toDate } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUserAction } from "@/actions/auth";
-import { useDistanceToTarget } from "@/hooks/useUserLocation";
+import { useDistanceToTarget } from "@/features/geo/useUserLocation";
 import { formatDistance } from "@/lib/geo";
 
 interface GemDetailPageProps {
