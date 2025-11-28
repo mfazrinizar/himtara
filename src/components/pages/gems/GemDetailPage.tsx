@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin,
@@ -235,14 +236,17 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
           {/* Image Gallery */}
           <div className="relative rounded-xl overflow-hidden">
             <div
-              className="aspect-video bg-muted cursor-pointer overflow-hidden"
+              className="aspect-video bg-muted cursor-pointer overflow-hidden relative"
               onClick={() => openModal(currentImageIndex)}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={gem.images[currentImageIndex]}
                 alt={gem.name}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 1200px"
+                priority
+                quality={85}
               />
               <div className="absolute top-4 right-4 bg-background/80 hover:bg-background px-3 py-2 rounded-full transition-colors flex items-center gap-2">
                 <Maximize2 className="w-4 h-4" />
@@ -626,17 +630,19 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
                         setModalImageIndex(index);
                         setZoomLevel(1);
                       }}
-                      className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                      className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all relative ${
                         index === modalImageIndex
                           ? "border-white scale-110"
                           : "border-white/30 hover:border-white/60 hover:scale-105"
                       }`}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <Image
                         src={image}
                         alt={`Thumbnail ${index + 1}`}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        sizes="64px"
+                        quality={60}
                       />
                     </motion.button>
                   ))}

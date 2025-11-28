@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, MapPin, Star, Navigation, Loader2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -152,11 +153,14 @@ export function GemsListPage() {
           >
             {/* Background Image */}
             <div className="absolute inset-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={currentBanner.bgImage}
                 alt={currentIslandData.label}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                priority
+                sizes="100vw"
+                quality={85}
               />
               {/* Gradient Overlay */}
               <div
@@ -443,11 +447,13 @@ function GemCard({ gem, distance }: GemCardProps) {
       <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full group flex flex-col">
         <div className="relative h-48 sm:h-56 bg-muted overflow-hidden flex-shrink-0">
           {gem.images && gem.images.length > 0 ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={gem.images[0]}
               alt={gem.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              quality={75}
             />
           ) : (
             <div className="h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
