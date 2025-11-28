@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+const islandValues = [
+  "sumatera",
+  "jawa", 
+  "kalimantan",
+  "sulawesi",
+  "bali-nusa-tenggara",
+  "papua-maluku",
+] as const;
+
 export const loginSchema = z.object({
   email: z.string().email("Email tidak valid"),
   password: z.string().min(6, "Kata sandi minimal 6 karakter"),
@@ -18,6 +27,9 @@ export const forgotPasswordSchema = z.object({
 export const createGemSchema = z.object({
   name: z.string().min(3, "Nama minimal 3 karakter"),
   description: z.string().min(10, "Deskripsi minimal 10 karakter"),
+  island: z.enum(islandValues, {
+    errorMap: () => ({ message: "Pilih pulau lokasi destinasi" }),
+  }),
   coordinates: z.object({
     lat: z.number(),
     lng: z.number(),

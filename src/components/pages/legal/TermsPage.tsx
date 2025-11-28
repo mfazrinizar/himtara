@@ -58,7 +58,7 @@ export function TermsPage() {
                 1. Penerimaan Syarat
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Dengan mengakses atau menggunakan platform Himtara (Hidden Gems
+                Dengan mengakses atau menggunakan platform HIMTARA (Hidden Gems
                 Nusantara), Anda menyetujui untuk terikat dengan Syarat &
                 Ketentuan ini. Jika Anda tidak menyetujui syarat-syarat ini,
                 mohon untuk tidak menggunakan layanan kami.
@@ -70,7 +70,7 @@ export function TermsPage() {
                 2. Deskripsi Layanan
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Himtara adalah platform yang memungkinkan pengguna untuk:
+                HIMTARA adalah platform yang memungkinkan pengguna untuk:
               </p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li>
@@ -163,7 +163,7 @@ export function TermsPage() {
                 6. Hak Kekayaan Intelektual
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Platform Himtara, termasuk desain, logo, dan kode sumber,
+                Platform HIMTARA, termasuk desain, logo, dan kode sumber,
                 dilindungi oleh hak kekayaan intelektual. Anda tidak diizinkan
                 untuk:
               </p>
@@ -179,7 +179,7 @@ export function TermsPage() {
                 7. Batasan Tanggung Jawab
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Himtara menyediakan platform &quot;sebagaimana adanya&quot;.
+                HIMTARA menyediakan platform &quot;sebagaimana adanya&quot;.
                 Kami tidak bertanggung jawab atas:
               </p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">

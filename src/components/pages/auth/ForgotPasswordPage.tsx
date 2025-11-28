@@ -123,7 +123,7 @@ export function ForgotPasswordPage() {
           <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary text-white shadow-lg group-hover:shadow-xl transition-shadow">
             <MapPin className="w-7 h-7" />
           </div>
-          <span className="text-2xl font-bold text-foreground">Himtara</span>
+          <span className="text-2xl font-bold text-foreground">HIMTARA</span>
         </Link>
 
         <Card className="shadow-2xl border-2 backdrop-blur-sm bg-card/95">

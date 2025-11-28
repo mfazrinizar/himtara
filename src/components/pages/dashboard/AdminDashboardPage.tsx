@@ -11,6 +11,7 @@ import {
   Users,
   Shield,
   UserX,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -464,6 +465,21 @@ export function AdminDashboardPage() {
                             <p className="text-sm text-muted-foreground line-clamp-2">
                               {gem.description}
                             </p>
+                            {/* Show rejection reason if rejected */}
+                            {gem.status === "rejected" &&
+                              gem.rejectionReason && (
+                                <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 mt-2">
+                                  <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-xs font-medium text-red-700 dark:text-red-300 mb-0.5">
+                                      Alasan Penolakan:
+                                    </p>
+                                    <p className="text-sm text-red-600 dark:text-red-400">
+                                      {gem.rejectionReason}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Star className="w-4 h-4 text-amber-500 fill-amber-500" />

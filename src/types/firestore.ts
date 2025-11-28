@@ -4,6 +4,28 @@ export type UserRole = "user" | "admin";
 export type UserStatus = "active" | "banned";
 export type GemStatus = "pending" | "approved" | "rejected";
 
+// Major islands of Indonesia
+export type Island = 
+  | "nusantara"  // All islands (default filter)
+  | "sumatera" 
+  | "jawa" 
+  | "kalimantan" 
+  | "sulawesi" 
+  | "bali-nusa-tenggara" 
+  | "papua-maluku";
+
+export const ISLANDS: { value: Island; label: string; description: string }[] = [
+  { value: "nusantara", label: "Nusantara", description: "Dari Sabang sampai Merauke" },
+  { value: "sumatera", label: "Sumatera", description: "Pulau emas dengan hutan tropis dan budaya kuat" },
+  { value: "jawa", label: "Jawa", description: "Pusat budaya, sejarah, dan dinamika Nusantara" },
+  { value: "kalimantan", label: "Kalimantan", description: "Rimba luas dan sungai-sungai megah" },
+  { value: "sulawesi", label: "Sulawesi", description: "Tanah eksotis dengan garis pantai berkelok" },
+  { value: "bali-nusa-tenggara", label: "Bali & Nusa Tenggara", description: "Surga tropis dengan pantai dan pesona budaya" },
+  { value: "papua-maluku", label: "Papua & Maluku", description: "Keelokan timur dengan alam perawan nan menawan" },
+];
+
+export const ISLAND_OPTIONS = ISLANDS.filter(i => i.value !== "nusantara");
+
 // Serialized timestamp for client components
 export type SerializedTimestamp = {
   seconds: number;
@@ -27,6 +49,7 @@ export interface Gem {
   id: string;
   name: string;
   description: string;
+  island: Island;
   coordinates: {
     lat: number;
     lng: number;

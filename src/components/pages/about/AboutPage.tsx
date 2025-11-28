@@ -18,7 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const teamMembers = [
   {
-    name: "Tim Himtara",
+    name: "Tim HIMTARA",
     role: "Pengembang & Peneliti",
     description:
       "Tim yang berdedikasi untuk menghadirkan pengalaman wisata terbaik bagi pengguna.",
@@ -79,7 +79,7 @@ export function AboutPage() {
                 </div>
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-                Tentang Himtara
+                Tentang HIMTARA
               </h1>
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
                 Platform untuk menemukan dan berbagi destinasi wisata
@@ -106,7 +106,7 @@ export function AboutPage() {
                   </h2>
                 </div>
                 <p className="text-muted-foreground mb-4 leading-relaxed">
-                  Himtara (Hidden Gems Nusantara) lahir dari keinginan untuk
+                  HIMTARA (Hidden Gems Nusantara) lahir dari keinginan untuk
                   memperkenalkan keindahan Indonesia yang belum banyak diketahui
                   orang. Kami percaya bahwa setiap sudut Nusantara memiliki
                   pesona tersendiri yang layak untuk dijelajahi.
@@ -157,7 +157,7 @@ export function AboutPage() {
               className="text-center mb-12"
             >
               <h2 className="text-3xl font-bold text-foreground mb-4">
-                Himtara dalam Angka
+                HIMTARA dalam Angka
               </h2>
               <p className="text-muted-foreground">
                 Pencapaian kami dalam menghubungkan wisatawan dengan hidden gems
@@ -249,7 +249,7 @@ export function AboutPage() {
                 Tim Kami
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Orang-orang di balik Himtara yang bekerja keras untuk
+                Orang-orang di balik HIMTARA yang bekerja keras untuk
                 menghadirkan pengalaman wisata terbaik
               </p>
             </motion.div>

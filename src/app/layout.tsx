@@ -3,7 +3,7 @@ import "./global.css";
 import { Providers } from "@/components/providers/Providers";
 
 export const metadata: Metadata = {
-  title: "Himtara - Hidden Gems Nusantara",
+  title: "HIMTARA - Hidden Gems Nusantara",
   description: "Jelajahi destinasi wisata tersembunyi di seluruh Nusantara.",
   icons: {
     icon: [

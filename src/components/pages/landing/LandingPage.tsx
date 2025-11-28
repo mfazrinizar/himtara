@@ -72,7 +72,7 @@ export function LandingPage() {
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         {/* Hero Section */}
-        <section className="relative overflow-hidden min-h-screen flex items-center px-4">
+        <section className="relative overflow-hidden h-[calc(100vh-5rem)] flex items-center justify-center px-4">
           {/* Animated Background with Floating Elements */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-accent/20"></div>
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -181,9 +181,9 @@ export function LandingPage() {
 
           {/* Background Image with Enhanced Overlay */}
           <div
-            className="absolute inset-0 bg-cover bg-center opacity-20"
+            className="absolute inset-0 bg-cover bg-center opacity-30"
             style={{
-              backgroundImage: `url(https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1920&q=80)`,
+              backgroundImage: `url(/islands/nusantara.jpeg)`,
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background/90 backdrop-blur-[1px]"></div>
@@ -202,7 +202,7 @@ export function LandingPage() {
                 className="inline-flex items-center gap-2 px-6 py-3 mb-6 rounded-full bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-emerald-500/20 border border-emerald-500/30 backdrop-blur-sm shadow-lg"
               >
                 <GemIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-sm sm:text-base font-semibold bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 bg-clip-text text-transparent">
+                <span className="text-sm sm:text-base font-semibold bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 dark:from-emerald-400 dark:via-teal-200 dark:to-emerald-400 bg-clip-text text-transparent">
                   HIMTARA - Hidden Gems Nusantara
                 </span>
                 <GemIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -251,7 +251,7 @@ export function LandingPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    className="pl-10 sm:pl-12 h-12 sm:h-14 text-base sm:text-lg w-full shadow-lg hover:shadow-xl transition-shadow"
+                    className="pl-10 sm:pl-12 h-12 sm:h-14 text-base sm:text-lg w-full shadow-lg hover:shadow-xl transition-shadow border-emerald-600"
                   />
                 </div>
                 <Button
@@ -294,7 +294,7 @@ export function LandingPage() {
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.8 + stat.delay, duration: 0.5 }}
                   whileHover={{ scale: 1.05 }}
-                  className="bg-background/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-border/50"
+                  className="bg-background/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border-emerald-400 border"
                 >
                   <div className="text-2xl sm:text-3xl font-bold text-primary">
                     {stat.value}
@@ -417,7 +417,7 @@ export function LandingPage() {
               className="text-center mb-12"
             >
               <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
-                Mengapa Memilih Himtara?
+                Mengapa Memilih HIMTARA?
               </h2>
               <p className="text-muted-foreground text-lg">
                 Hidden Gems Nusantara - Platform terpercaya untuk menemukan

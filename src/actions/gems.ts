@@ -72,6 +72,7 @@ export interface GemFilters {
   submittedBy?: string; // Filter by user UID
   searchQuery?: string;
   minRating?: number;
+  island?: string; // Filter by island
   sortBy?: "createdAt" | "ratingAvg" | "reviewCount" | "name";
   sortOrder?: "asc" | "desc";
 }
@@ -99,6 +100,7 @@ export async function getGemsAction(
       submittedBy,
       searchQuery,
       minRating,
+      island,
       sortBy = "createdAt",
       sortOrder = "desc",
     } = filters;
@@ -127,16 +129,23 @@ export async function getGemsAction(
       constraints.push(where("ratingAvg", ">=", minRating));
     }
 
+    // Apply island filter
+    if (island && island !== "nusantara") {
+      constraints.push(where("island", "==", island));
+    }
+
     // Apply sorting
     constraints.push(orderBy(sortBy, sortOrder));
 
-    // Apply pagination
-    constraints.push(limit(pageSize + 1)); // Get one extra to check if there are more
+    // For proper pagination, we need to fetch enough documents to reach the current page
+    // Firestore doesn't support offset, so we fetch (page * pageSize + 1) and skip client-side
+    const fetchLimit = page * pageSize + 1;
+    constraints.push(limit(fetchLimit));
 
     gemsQuery = query(gemsQuery, ...constraints);
 
     const snapshot = await getDocs(gemsQuery);
-    let gems = snapshot.docs.map((doc) => {
+    let allGems = snapshot.docs.map((doc) => {
       const data = doc.data();
       return serializeGem({
         id: doc.id,
@@ -147,18 +156,17 @@ export async function getGemsAction(
     // Client-side search filtering (Firestore doesn't support full-text search natively)
     if (searchQuery && searchQuery.trim()) {
       const searchLower = searchQuery.toLowerCase();
-      gems = gems.filter(
+      allGems = allGems.filter(
         (gem) =>
           gem.name?.toLowerCase().includes(searchLower) ||
           gem.description?.toLowerCase().includes(searchLower)
       );
     }
 
-    // Check if there are more pages
-    const hasMore = gems.length > pageSize;
-    if (hasMore) {
-      gems = gems.slice(0, pageSize);
-    }
+    // Calculate pagination
+    const startIndex = (page - 1) * pageSize;
+    const hasMore = allGems.length > startIndex + pageSize;
+    const gems = allGems.slice(startIndex, startIndex + pageSize);
 
     return {
       success: true,
@@ -168,7 +176,7 @@ export async function getGemsAction(
         pagination: {
           page,
           pageSize,
-          totalCount: gems.length, // Note: This is approximate for the current page
+          totalCount: gems.length,
           hasMore,
         },
       },

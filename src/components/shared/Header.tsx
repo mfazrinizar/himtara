@@ -4,7 +4,7 @@ import Link from "next/link";
 import { MapPin, Menu, X, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { logoutAction, getCurrentUserAction } from "@/actions/auth";
 import { toast } from "sonner";
@@ -13,8 +13,20 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    handleScroll();
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const { data: userResult } = useQuery({
     queryKey: ["auth-user"],
@@ -35,14 +47,20 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-[100] w-full border-b border-border bg-background/95 backdrop-blur-xl shadow-lg">
+    <header
+      className={`sticky top-0 z-[100] w-full border-b transition-all duration-300 backdrop-blur-md ${
+        isScrolled
+          ? "border-transparent shadow-lg bg-white/50 dark:bg-neutral-900/50"
+          : "border-transparent bg-white/70 dark:bg-emerald-950"
+      }`}
+    >
       <div className="container mx-auto flex h-20 sm:h-20 items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-3 group">
           <div className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-primary text-white shadow-md group-hover:shadow-lg transition-shadow">
             <MapPin className="w-7 h-7 sm:w-8 sm:h-8" />
           </div>
           <span className="text-2xl sm:text-3xl font-bold text-foreground">
-            Himtara
+            HIMTARA
           </span>
         </Link>
 

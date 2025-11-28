@@ -58,7 +58,7 @@ export function PrivacyPage() {
                 1. Pendahuluan
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Selamat datang di Himtara (Hidden Gems Nusantara). Kami
+                Selamat datang di HIMTARA (Hidden Gems Nusantara). Kami
                 menghargai privasi Anda dan berkomitmen untuk melindungi data
                 pribadi Anda. Kebijakan Privasi ini menjelaskan bagaimana kami
                 mengumpulkan, menggunakan, dan melindungi informasi Anda ketika

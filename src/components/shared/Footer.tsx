@@ -15,14 +15,14 @@ export function Footer() {
             <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-primary text-white">
               <MapPin className="w-5 h-5" />
             </div>
-            <span className="text-xl font-bold text-foreground">Himtara</span>
+            <span className="text-xl font-bold text-foreground">HIMTARA</span>
           </Link>
           <p className="text-muted-foreground text-sm">
             Jelajahi destinasi wisata tersembunyi di seluruh Nusantara.
           </p>
           <div className="flex space-x-4">
             <a
-              href="#"
+              href="https://github.com/mfazrinizar/himtara"
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
@@ -38,7 +38,7 @@ export function Footer() {
               <Github className="h-5 w-5" />
             </a>
             <a
-              href="#"
+              href="https://github.com/mfazrinizar/himtara"
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
@@ -104,7 +104,7 @@ export function Footer() {
       </div>
 
       <div className="mt-8 pt-6 border-t border-border text-center text-muted-foreground text-sm">
-        &copy; {currentYear} Himtara. Hak cipta dilindungi.
+        &copy; {currentYear} HIMTARA. Hak cipta dilindungi.
       </div>
     </footer>
   );

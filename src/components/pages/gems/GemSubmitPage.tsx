@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/shared/Header";
 import { MapPicker } from "@/components/shared/MapPicker";
+import { ISLAND_OPTIONS } from "@/types/firestore";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -230,6 +231,33 @@ export function GemSubmitPage() {
                   {errors.description && (
                     <p className="text-sm text-red-500">
                       {errors.description.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Island Selection */}
+                <div className="space-y-2">
+                  <label htmlFor="island" className="text-sm font-medium">
+                    Pulau <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="island"
+                    className="w-full h-12 px-3 rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    {...register("island")}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>
+                      Pilih pulau lokasi destinasi
+                    </option>
+                    {ISLAND_OPTIONS.map((island) => (
+                      <option key={island.value} value={island.value}>
+                        {island.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.island && (
+                    <p className="text-sm text-red-500">
+                      {errors.island.message}
                     </p>
                   )}
                 </div>

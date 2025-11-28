@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Search, MapPin, Star, Navigation, Loader2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import Link from "next/link";
@@ -8,16 +8,60 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Gem } from "@/types/firestore";
+import type { Gem, Island } from "@/types/firestore";
+import { ISLANDS } from "@/types/firestore";
 import { GemCardSkeleton } from "@/components/shared/Skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
+import { Pagination } from "@/components/shared/Pagination";
 import { useGemList } from "@/features/gems/hooks";
 import { useUserLocation } from "@/features/geo/hooks";
 import { sortByDistance, formatDistance } from "@/lib/geo";
 
 type SortMode = "rating" | "nearest";
+
+// Island banner colors, patterns, and background images
+const ISLAND_BANNERS: Record<
+  Island,
+  { gradient: string; buttonGradient: string; bgImage: string }
+> = {
+  nusantara: {
+    gradient: "from-emerald-600/80 via-teal-500/80 to-cyan-500/80",
+    buttonGradient: "from-emerald-600 via-teal-500 to-cyan-500",
+    bgImage: "/islands/nusantara.jpeg",
+  },
+  sumatera: {
+    gradient: "from-green-600/80 via-emerald-500/80 to-teal-500/80",
+    buttonGradient: "from-green-600 via-emerald-500 to-teal-500",
+    bgImage: "/islands/sumatera.jpeg",
+  },
+  jawa: {
+    gradient: "from-amber-600/80 via-orange-500/80 to-yellow-500/80",
+    buttonGradient: "from-amber-600 via-orange-500 to-yellow-500",
+    bgImage: "/islands/jawa.jpeg",
+  },
+  kalimantan: {
+    gradient: "from-green-700/80 via-green-600/80 to-emerald-500/80",
+    buttonGradient: "from-green-700 via-green-600 to-emerald-500",
+    bgImage: "/islands/kalimantan.jpeg",
+  },
+  sulawesi: {
+    gradient: "from-blue-600/80 via-indigo-500/80 to-purple-500/80",
+    buttonGradient: "from-blue-600 via-indigo-500 to-purple-500",
+    bgImage: "/islands/sulawesi.jpeg",
+  },
+  "bali-nusa-tenggara": {
+    gradient: "from-orange-500/80 via-red-500/80 to-pink-500/80",
+    buttonGradient: "from-orange-500 via-red-500 to-pink-500",
+    bgImage: "/islands/bali-nusa-tenggara.jpeg",
+  },
+  "papua-maluku": {
+    gradient: "from-teal-600/80 via-cyan-500/80 to-blue-500/80",
+    buttonGradient: "from-teal-600 via-cyan-500 to-blue-500",
+    bgImage: "/islands/papua-maluku.jpeg",
+  },
+};
 
 export function GemsListPage() {
   const searchParams = useSearchParams();
@@ -26,7 +70,8 @@ export function GemsListPage() {
   const [page, setPage] = useState(1);
   const [minRating, setMinRating] = useState<number | undefined>();
   const [sortMode, setSortMode] = useState<SortMode>("rating");
-  const pageSize = 12;
+  const [selectedIsland, setSelectedIsland] = useState<Island>("nusantara");
+  const pageSize = 10;
 
   // User location hook
   const {
@@ -41,6 +86,7 @@ export function GemsListPage() {
       status: "approved",
       searchQuery: searchQuery || undefined,
       minRating,
+      island: selectedIsland !== "nusantara" ? selectedIsland : undefined,
       sortBy: "ratingAvg",
       sortOrder: "desc",
     },
@@ -81,9 +127,123 @@ export function GemsListPage() {
     }
   };
 
+  const handleIslandChange = (island: Island) => {
+    setSelectedIsland(island);
+    setPage(1);
+  };
+
+  const currentIslandData = ISLANDS.find((i) => i.value === selectedIsland)!;
+  const currentBanner = ISLAND_BANNERS[selectedIsland];
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
+
+      {/* Island Banner */}
+      <div className="relative overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={selectedIsland}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="relative py-16 sm:py-24 lg:py-32"
+          >
+            {/* Background Image */}
+            <div className="absolute inset-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={currentBanner.bgImage}
+                alt={currentIslandData.label}
+                className="w-full h-full object-cover"
+              />
+              {/* Gradient Overlay */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-r ${currentBanner.gradient} opacity-40`}
+              />
+              <div className="absolute inset-0 bg-black/30" />
+            </div>
+
+            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-center text-white"
+              >
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 drop-shadow-lg">
+                  {currentIslandData.label}
+                </h1>
+                <p className="text-base sm:text-lg lg:text-xl opacity-100 max-w-2xl mx-auto drop-shadow-md leading-relaxed">
+                  {currentIslandData.description}
+                </p>
+              </motion.div>
+            </div>
+
+            {/* Wave Decoration */}
+            {/* <div className="absolute bottom-0 left-0 right-0">
+              <svg
+                viewBox="0 0 1440 120"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-full h-auto"
+                preserveAspectRatio="none"
+              >
+                <path
+                  d="M0,64L48,69.3C96,75,192,85,288,80C384,75,480,53,576,48C672,43,768,53,864,69.3C960,85,1056,107,1152,101.3C1248,96,1344,64,1392,48L1440,32L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"
+                  className="fill-background"
+                />
+              </svg>
+            </div> */}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Island Selector */}
+      <div className="bg-background py-4 border-b">
+        <div
+          className="mx-auto"
+          style={{
+            maxWidth: "80rem",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            className="scrollbar-hide"
+            style={{
+              display: "flex",
+              gap: "0.5rem",
+              padding: "0.5rem 1rem",
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch",
+              justifyContent: "flex-start",
+              width: "max-content",
+            }}
+          >
+            {ISLANDS.map((island) => (
+              <button
+                key={island.value}
+                onClick={() => handleIslandChange(island.value)}
+                style={{ flexShrink: 0 }}
+                className={`
+                    px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap
+                    ${
+                      selectedIsland === island.value
+                        ? `bg-gradient-to-r ${
+                            ISLAND_BANNERS[island.value].buttonGradient
+                          } text-white shadow-md`
+                        : "bg-muted hover:bg-muted/80 text-foreground"
+                    }
+                      `}
+              >
+                {island.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Search and Filter Section */}
@@ -92,11 +252,14 @@ export function GemsListPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-6 sm:mb-8"
         >
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 sm:mb-6">
-            Jelajahi Destinasi Wisata
-          </h1>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">
+            {selectedIsland === "nusantara"
+              ? "Jelajahi Destinasi Wisata"
+              : `Destinasi di ${currentIslandData.label}`}
+          </h2>
 
-          <div className="flex flex-col gap-3 sm:gap-4">
+          {/* Desktop: Side by side layout */}
+          <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
             {/* Search Input */}
             <div className="relative flex-1">
               <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
@@ -112,14 +275,14 @@ export function GemsListPage() {
               />
             </div>
 
-            {/* Filters Row */}
-            <div className="flex flex-wrap gap-2">
+            {/* Filters - Inline on desktop */}
+            <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
               {/* Rating Filters */}
               <div className="flex gap-2">
                 <Button
                   variant={minRating === undefined ? "default" : "outline"}
                   size="sm"
-                  className="h-9 sm:h-10"
+                  className="h-11 sm:h-12 px-4"
                   onClick={() => handleFilterRating(undefined)}
                 >
                   Semua
@@ -127,7 +290,7 @@ export function GemsListPage() {
                 <Button
                   variant={minRating === 4 ? "default" : "outline"}
                   size="sm"
-                  className="gap-1.5 h-9 sm:h-10"
+                  className="gap-1.5 h-11 sm:h-12 px-4"
                   onClick={() => handleFilterRating(4)}
                 >
                   <Star className="w-3.5 h-3.5 fill-current" />
@@ -135,25 +298,25 @@ export function GemsListPage() {
                 </Button>
               </div>
 
-              {/* Divider */}
-              <div className="w-px bg-border mx-1 hidden sm:block" />
+              {/* Divider - Only on desktop */}
+              <div className="w-px h-8 bg-border mx-1 hidden lg:block" />
 
               {/* Sort Options */}
               <div className="flex gap-2">
                 <Button
                   variant={sortMode === "rating" ? "default" : "outline"}
                   size="sm"
-                  className="gap-1.5 h-9 sm:h-10"
+                  className="gap-1.5 h-11 sm:h-12 px-4"
                   onClick={() => handleSortModeChange("rating")}
                 >
                   <Star className="w-3.5 h-3.5" />
-                  <span className="hidden xs:inline">Rating Tertinggi</span>
-                  <span className="xs:hidden">Rating</span>
+                  <span className="hidden sm:inline">Rating Tertinggi</span>
+                  <span className="sm:hidden">Rating</span>
                 </Button>
                 <Button
                   variant={sortMode === "nearest" ? "default" : "outline"}
                   size="sm"
-                  className="gap-1.5 h-9 sm:h-10"
+                  className="gap-1.5 h-11 sm:h-12 px-4"
                   onClick={() => handleSortModeChange("nearest")}
                   disabled={locationLoading}
                 >
@@ -162,13 +325,15 @@ export function GemsListPage() {
                   ) : (
                     <Navigation className="w-3.5 h-3.5" />
                   )}
-                  <span className="hidden xs:inline">Terdekat</span>
-                  <span className="xs:hidden">Dekat</span>
+                  <span className="hidden sm:inline">Terdekat</span>
+                  <span className="sm:hidden">Dekat</span>
                 </Button>
               </div>
             </div>
+          </div>
 
-            {/* Location Status */}
+          {/* Location Status */}
+          <div className="mt-3">
             {locationError && (
               <motion.p
                 initial={{ opacity: 0, y: -10 }}
@@ -252,27 +417,13 @@ export function GemsListPage() {
             </motion.div>
 
             {/* Pagination */}
-            {(page > 1 || pagination.hasMore) && (
-              <div className="flex justify-center items-center gap-4 mt-8">
-                <Button
-                  variant="outline"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Sebelumnya
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  Halaman {page}
-                </span>
-                <Button
-                  variant="outline"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={!pagination.hasMore}
-                >
-                  Selanjutnya
-                </Button>
-              </div>
-            )}
+            <Pagination
+              page={page}
+              hasMore={pagination.hasMore}
+              onPageChange={setPage}
+              isLoading={isLoading}
+              className="mt-8"
+            />
           </>
         )}
       </div>
