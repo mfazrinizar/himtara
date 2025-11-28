@@ -321,7 +321,7 @@ function GemCard({ gem, distance }: GemCardProps) {
           {/* Distance Badge */}
           {distance !== undefined && (
             <div
-              className="absolute top-3 sm:top-4 left-3 sm:left-4 bg-white/30 dark:bg-black/30 backdrop-blur-sm backdrop-saturate-150 px-2.5 py-1.5 sm:px-3 rounded-full flex items-center gap-1 sm:gap-1.5 shadow-md border border-white/20 dark:border-black/20"
+              className="absolute top-3 sm:top-4 left-3 sm:left-4 bg-black/30 backdrop-blur-sm backdrop-saturate-150 px-2.5 py-1.5 sm:px-3 rounded-full flex items-center gap-1 sm:gap-1.5 shadow-md border border-white/20 dark:border-black/20"
               style={{
                 WebkitBackdropFilter: "blur(6px)",
                 backdropFilter: "blur(6px)",
