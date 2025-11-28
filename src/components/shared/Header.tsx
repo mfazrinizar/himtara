@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, Menu, User, LogOut } from "lucide-react";
+import { MapPin, Menu, X, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { useState } from "react";
@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { logoutAction, getCurrentUserAction } from "@/actions/auth";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -119,99 +120,140 @@ export function Header() {
             variant="ghost"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
+            className="relative"
           >
-            <Menu className="h-6 w-6" />
+            <AnimatePresence mode="wait" initial={false}>
+              {mobileMenuOpen ? (
+                <motion.div
+                  key="close"
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <X className="h-6 w-6" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="menu"
+                  initial={{ rotate: 90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: -90, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Menu className="h-6 w-6" />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Button>
         </div>
       </div>
 
       {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-border bg-background">
-          <nav className="flex flex-col px-4 py-3 space-y-3">
-            <Link
-              href="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="lg:hidden border-t border-border bg-background overflow-hidden"
+          >
+            <motion.nav
+              initial={{ y: -10 }}
+              animate={{ y: 0 }}
+              transition={{ duration: 0.2, delay: 0.1 }}
+              className="flex flex-col px-4 py-3 space-y-3"
             >
-              Beranda
-            </Link>
-            <Link
-              href="/gems"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-            >
-              Destinasi
-            </Link>
-            <Link
-              href="/contact"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-            >
-              Kontak
-            </Link>
-            {user ? (
               <Link
-                href="/gems/submit"
+                href="/"
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors py-2"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
               >
-                Ajukan Hidden Gem
+                Beranda
               </Link>
-            ) : (
               <Link
-                href="/login"
+                href="/gems"
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors py-2"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
               >
-                Ajukan Hidden Gem
+                Destinasi
               </Link>
-            )}
-            <div className="flex flex-col gap-2 pt-2 border-t border-border">
+              <Link
+                href="/contact"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
+                Kontak
+              </Link>
               {user ? (
-                <>
-                  <Link
-                    href={
-                      user.role === "admin" ? "/admin/dashboard" : "/dashboard"
-                    }
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Button variant="ghost" className="w-full gap-2">
-                      <User className="w-4 h-4" />
-                      Dashboard
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    className="w-full gap-2"
-                    onClick={() => {
-                      handleLogout();
-                      setMobileMenuOpen(false);
-                    }}
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Keluar
-                  </Button>
-                </>
+                <Link
+                  href="/gems/submit"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors py-2"
+                >
+                  Ajukan Hidden Gem
+                </Link>
               ) : (
-                <>
-                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full">
-                      Masuk
-                    </Button>
-                  </Link>
-                  <Link
-                    href="/register"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Button className="w-full">Daftar</Button>
-                  </Link>
-                </>
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors py-2"
+                >
+                  Ajukan Hidden Gem
+                </Link>
               )}
-            </div>
-          </nav>
-        </div>
-      )}
+              <div className="flex flex-col gap-2 pt-2 border-t border-border">
+                {user ? (
+                  <>
+                    <Link
+                      href={
+                        user.role === "admin"
+                          ? "/admin/dashboard"
+                          : "/dashboard"
+                      }
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Button variant="ghost" className="w-full gap-2">
+                        <User className="w-4 h-4" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      className="w-full gap-2"
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Keluar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Button variant="ghost" className="w-full">
+                        Masuk
+                      </Button>
+                    </Link>
+                    <Link
+                      href="/register"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Button className="w-full">Daftar</Button>
+                    </Link>
+                  </>
+                )}
+              </div>
+            </motion.nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

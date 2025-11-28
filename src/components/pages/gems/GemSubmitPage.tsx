@@ -353,7 +353,7 @@ export function GemSubmitPage() {
                         <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                           <MapPin className="w-8 h-8 text-emerald-600" />
                         </div>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground text-center">
                           Masukkan koordinat untuk melihat pratinjau lokasi
                         </p>
                       </div>
