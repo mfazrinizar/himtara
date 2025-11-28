@@ -77,7 +77,7 @@ export function ContactPage() {
                   <h3 className="font-semibold mb-2">Email</h3>
                   <p className="text-sm text-muted-foreground">
                     {process.env.NEXT_PUBLIC_CONTACT_EMAIL ||
-                      "support@himtara.com"}
+                      "support@himtara.mfazrinizar.com"}
                   </p>
                 </CardContent>
               </Card>

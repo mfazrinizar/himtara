@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin } from "lucide-react";
-import { Github, Twitter, Linkedin } from "lucide-react"; // Example social icons
+import { Instagram, MapPin } from "lucide-react";
+import { Github, Linkedin } from "lucide-react";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -21,13 +21,28 @@ export function Footer() {
             Jelajahi destinasi wisata tersembunyi di seluruh Nusantara.
           </p>
           <div className="flex space-x-4">
-            <a href="#" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
-              <Twitter className="h-5 w-5" />
+            <a
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Instagram className="h-5 w-5" />
             </a>
-            <a href="#" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+            <a
+              href="https://github.com/mfazrinizar/himtara"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
               <Github className="h-5 w-5" />
             </a>
-            <a href="#" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+            <a
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
               <Linkedin className="h-5 w-5" />
             </a>
           </div>
@@ -35,30 +50,52 @@ export function Footer() {
 
         <div className="grid grid-cols-2 gap-8 md:col-span-2">
           <div>
-            <h3 className="text-foreground text-lg font-semibold mb-4">Navigasi</h3>
+            <h3 className="text-foreground text-lg font-semibold mb-4">
+              Navigasi
+            </h3>
             <nav className="space-y-2">
-              <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors block text-sm">
+              <Link
+                href="/"
+                className="text-muted-foreground hover:text-foreground transition-colors block text-sm"
+              >
                 Beranda
               </Link>
-              <Link href="/gems" className="text-muted-foreground hover:text-foreground transition-colors block text-sm">
+              <Link
+                href="/gems"
+                className="text-muted-foreground hover:text-foreground transition-colors block text-sm"
+              >
                 Destinasi
               </Link>
-              <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors block text-sm">
+              <Link
+                href="/about"
+                className="text-muted-foreground hover:text-foreground transition-colors block text-sm"
+              >
                 Tentang Kami
               </Link>
-              <Link href="/contact" className="text-muted-foreground hover:text-foreground transition-colors block text-sm">
+              <Link
+                href="/contact"
+                className="text-muted-foreground hover:text-foreground transition-colors block text-sm"
+              >
                 Kontak
               </Link>
             </nav>
           </div>
 
           <div>
-            <h3 className="text-foreground text-lg font-semibold mb-4">Legal</h3>
+            <h3 className="text-foreground text-lg font-semibold mb-4">
+              Legal
+            </h3>
             <nav className="space-y-2">
-              <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors block text-sm">
+              <Link
+                href="/privacy"
+                className="text-muted-foreground hover:text-foreground transition-colors block text-sm"
+              >
                 Kebijakan Privasi
               </Link>
-              <Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors block text-sm">
+              <Link
+                href="/terms"
+                className="text-muted-foreground hover:text-foreground transition-colors block text-sm"
+              >
                 Syarat & Ketentuan
               </Link>
             </nav>
