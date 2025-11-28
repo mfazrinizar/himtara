@@ -11,6 +11,7 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Navigation,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +28,8 @@ import { toDate } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUserAction } from "@/actions/auth";
+import { useDistanceToTarget } from "@/hooks/useUserLocation";
+import { formatDistance } from "@/lib/geo";
 
 interface GemDetailPageProps {
   gemId: string;
@@ -64,6 +67,11 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
   const gem = gemResult?.success ? gemResult.data : null;
   const reviews = reviewsResult?.success ? reviewsResult.data : [];
   const isLoading = gemLoading || reviewsLoading;
+
+  // Get distance to gem using the custom hook
+  const { distance: distanceToGem } = useDistanceToTarget(
+    gem ? { lat: gem.coordinates.lat, lng: gem.coordinates.lng } : null
+  );
 
   // Fetch location address from Google Maps Geocoding API
   useEffect(() => {
@@ -300,6 +308,14 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
                       {locationAddress || "Memuat lokasi..."}
                     </span>
                   </div>
+                  {distanceToGem !== null && (
+                    <div className="flex items-center gap-1 flex-shrink-0 text-primary">
+                      <Navigation className="w-5 h-5" />
+                      <span className="font-semibold">
+                        {formatDistance(distanceToGem)} dari lokasi Anda
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <p className="text-text-secondary leading-relaxed">
                   {gem.description}

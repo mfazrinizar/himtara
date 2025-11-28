@@ -495,7 +495,13 @@ function GemCard({ gem }: { gem: Gem }) {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           {gem.ratingAvg > 0 && (
-            <div className="absolute top-3 sm:top-4 right-3 sm:right-4 bg-background/95 backdrop-blur-sm px-2.5 py-1.5 sm:px-3 rounded-full flex items-center gap-1 shadow-lg">
+            <div
+              className="absolute top-3 sm:top-4 right-3 sm:right-4 bg-background/95 backdrop-blur-sm px-2.5 py-1.5 sm:px-3 rounded-full flex items-center gap-1 sm:gap-1.5 shadow-md"
+              style={{
+                WebkitBackdropFilter: "blur(6px)",
+                backdropFilter: "blur(6px)",
+              }}
+            >
               <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400 text-amber-400" />
               <span className="font-semibold text-xs sm:text-sm text-white">
                 {gem.ratingAvg.toFixed(1)}

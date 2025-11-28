@@ -13,6 +13,8 @@ if (!admin.apps.length) {
 
   admin.firestore().settings({
     ignoreUndefinedProperties: true,
+    projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+    databaseId: process.env.FIREBASE_ADMIN_DATABASE_NAME ?? "default",
   });
 }
 
