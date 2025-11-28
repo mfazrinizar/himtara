@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
 import { useGemList } from "@/features/gems/hooks";
-import { useUserLocation } from "@/features/geo/useUserLocation";
+import { useUserLocation } from "@/features/geo/hooks";
 import { sortByDistance, formatDistance } from "@/lib/geo";
 
 type SortMode = "rating" | "nearest";

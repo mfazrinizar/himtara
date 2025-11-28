@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { MapPin, Upload, Image as ImageIcon, Send } from "lucide-react";
+import {
+  MapPin,
+  Upload,
+  Image as ImageIcon,
+  Send,
+  Loader2,
+} from "lucide-react";
 import { createGemSchema, type CreateGemInput } from "@/schemas";
 import { useCreateGem } from "@/features/gems/hooks";
 import { Button } from "@/components/ui/button";
@@ -12,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/shared/Header";
+import { MapPicker } from "@/components/shared/MapPicker";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -229,23 +236,41 @@ export function GemSubmitPage() {
 
                 {/* Coordinates */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <label className="text-sm font-medium">
                       Koordinat Lokasi <span className="text-red-500">*</span>
                     </label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={getCurrentLocation}
-                      disabled={isGettingLocation}
-                      className="gap-2"
-                    >
-                      <MapPin className="w-4 h-4" />
-                      {isGettingLocation
-                        ? "Mengambil Lokasi..."
-                        : "Gunakan Lokasi Saat Ini"}
-                    </Button>
+                    <div className="flex gap-2 flex-wrap">
+                      <MapPicker
+                        value={
+                          watch("coordinates.lat") && watch("coordinates.lng")
+                            ? {
+                                lat: watch("coordinates.lat"),
+                                lng: watch("coordinates.lng"),
+                              }
+                            : undefined
+                        }
+                        onChange={(coords) => {
+                          setValue("coordinates.lat", coords.lat);
+                          setValue("coordinates.lng", coords.lng);
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="default"
+                        onClick={getCurrentLocation}
+                        disabled={isGettingLocation}
+                        className="gap-2"
+                      >
+                        {isGettingLocation ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <MapPin className="w-4 h-4" />
+                        )}
+                        {isGettingLocation ? "Mengambil..." : "Lokasi Saat Ini"}
+                      </Button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
