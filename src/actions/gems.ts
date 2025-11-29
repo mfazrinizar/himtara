@@ -23,6 +23,7 @@ import {
 import { db } from "@/lib/firebase/client";
 import type { ServerActionResult, Gem, Review } from "@/types/firestore";
 import type { CreateGemInput, CreateReviewInput } from "@/schemas";
+import { generateSearchKeywords, generateSearchTokens } from "@/lib/utils";
 
 // Helper function to convert Firestore Timestamp to plain object
 function serializeTimestamp(
@@ -89,6 +90,7 @@ export interface PaginatedResponse<T> {
 
 /**
  * Get paginated and filtered list of gems
+ * Uses Firestore array-contains-any for efficient keyword search
  */
 export async function getGemsAction(
   filters: GemFilters = {},
@@ -107,6 +109,10 @@ export async function getGemsAction(
 
     const { page = 1, pageSize = 10 } = pagination;
 
+    // Generate search tokens from query
+    const searchTokens = searchQuery ? generateSearchTokens(searchQuery) : [];
+    const hasSearch = searchTokens.length > 0;
+
     // Build query
     let gemsQuery: Query<DocumentData> = collection(db, "gems");
     const constraints: QueryConstraint[] = [];
@@ -124,8 +130,13 @@ export async function getGemsAction(
       constraints.push(where("status", "==", "approved"));
     }
 
-    // Apply rating filter
-    if (minRating !== undefined && minRating > 0) {
+    // Apply search filter based on keywords
+    if (hasSearch) {
+      constraints.push(where("searchKeywords", "array-contains", searchTokens[0]));
+    }
+
+    // Apply rating filter (only if no search, due to Firestore index limitations)
+    if (minRating !== undefined && minRating > 0 && !hasSearch) {
       constraints.push(where("ratingAvg", ">=", minRating));
     }
 
@@ -134,12 +145,13 @@ export async function getGemsAction(
       constraints.push(where("island", "==", island));
     }
 
-    // Apply sorting
-    constraints.push(orderBy(sortBy, sortOrder));
+    // Apply sorting - when searching, we fetch more and sort client-side
+    if (!hasSearch) {
+      constraints.push(orderBy(sortBy, sortOrder));
+    }
 
-    // For proper pagination, we need to fetch enough documents to reach the current page
-    // Firestore doesn't support offset, so we fetch (page * pageSize + 1) and skip client-side
-    const fetchLimit = page * pageSize + 1;
+    // Fetch more documents when searching to ensure we have enough matches
+    const fetchLimit = hasSearch ? 100 : page * pageSize + 1;
     constraints.push(limit(fetchLimit));
 
     gemsQuery = query(gemsQuery, ...constraints);
@@ -153,17 +165,37 @@ export async function getGemsAction(
       } as Gem);
     });
 
-    // Client-side search filtering (Firestore doesn't support full-text search natively)
-    if (searchQuery && searchQuery.trim()) {
-      const searchLower = searchQuery.toLowerCase();
-      allGems = allGems.filter(
-        (gem) =>
-          gem.name?.toLowerCase().includes(searchLower) ||
-          gem.description?.toLowerCase().includes(searchLower)
-      );
+    // If searching with multiple tokens, filter for documents matching all tokens
+    if (searchTokens.length > 1) {
+      allGems = allGems.filter((gem) => {
+        const keywords = gem.searchKeywords || [];
+        // Check if all search tokens have at least one matching keyword
+        return searchTokens.every(token => 
+          keywords.some(keyword => keyword.startsWith(token) || keyword === token)
+        );
+      });
+    }
+
+    // Apply rating filter client-side when searching (due to index limitations)
+    if (hasSearch && minRating !== undefined && minRating > 0) {
+      allGems = allGems.filter(gem => gem.ratingAvg >= minRating);
+    }
+
+    // Sort client-side when searching
+    if (hasSearch) {
+      allGems.sort((a, b) => {
+        const aVal = a[sortBy as keyof Gem];
+        const bVal = b[sortBy as keyof Gem];
+        if (aVal === undefined || bVal === undefined) return 0;
+        if (sortOrder === "desc") {
+          return aVal > bVal ? -1 : 1;
+        }
+        return aVal > bVal ? 1 : -1;
+      });
     }
 
     // Calculate pagination
+    const totalCount = allGems.length;
     const startIndex = (page - 1) * pageSize;
     const hasMore = allGems.length > startIndex + pageSize;
     const gems = allGems.slice(startIndex, startIndex + pageSize);
@@ -176,7 +208,7 @@ export async function getGemsAction(
         pagination: {
           page,
           pageSize,
-          totalCount: gems.length,
+          totalCount,
           hasMore,
         },
       },
@@ -192,24 +224,41 @@ export async function getGemsAction(
 
 /**
  * Get a single gem by ID
+ * Uses Admin SDK and performs manual authorization check
  */
 export async function getGemByIdAction(
-  id: string
+  id: string,
+  userId?: string,
+  userRole?: string
 ): Promise<ServerActionResult<Gem>> {
   try {
-    const gemDoc = await getDoc(doc(db, "gems", id));
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const gemDoc = await adminDb.collection("gems").doc(id).get();
 
-    if (!gemDoc.exists()) {
+    if (!gemDoc.exists) {
       return {
         success: false,
         message: "Destinasi tidak ditemukan.",
       };
     }
 
+    const gemData = gemDoc.data();
     const gem = serializeGem({
       id: gemDoc.id,
-      ...gemDoc.data(),
+      ...gemData,
     } as Gem);
+
+    if (gem.status !== "approved") {
+      const isOwner = userId && gem.submittedBy === userId;
+      const isAdmin = userRole === "admin";
+      
+      if (!isOwner && !isAdmin) {
+        return {
+          success: false,
+          message: "Anda tidak memiliki akses untuk melihat destinasi ini.",
+        };
+      }
+    }
 
     return {
       success: true,
@@ -226,11 +275,12 @@ export async function getGemByIdAction(
 }
 
 /**
- * Search gems by name or description
+ * Search gems by name or description using keyword index
+ * More efficient than full collection scan
  */
 export async function searchGemsAction(
   searchQuery: string,
-  limit: number = 10
+  limitCount: number = 10
 ): Promise<ServerActionResult<Gem[]>> {
   try {
     if (!searchQuery || searchQuery.trim().length < 2) {
@@ -240,30 +290,45 @@ export async function searchGemsAction(
       };
     }
 
-    // Get all approved gems (Firestore limitation - no full-text search)
+    const searchTokens = generateSearchTokens(searchQuery);
+    if (searchTokens.length === 0) {
+      return {
+        success: true,
+        message: "Tidak ada hasil.",
+        data: [],
+      };
+    }
+
+    // Use array-contains for first token (indexed search)
     const gemsQuery = query(
       collection(db, "gems"),
       where("status", "==", "approved"),
-      orderBy("ratingAvg", "desc")
+      where("searchKeywords", "array-contains", searchTokens[0]),
+      limit(limitCount * 5)
     );
 
     const snapshot = await getDocs(gemsQuery);
-    const searchLower = searchQuery.toLowerCase();
+    let results = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return serializeGem({
+        id: doc.id,
+        ...data,
+      } as Gem);
+    });
 
-    const results = snapshot.docs
-      .map((doc) => {
-        const data = doc.data();
-        return serializeGem({
-          id: doc.id,
-          ...data,
-        } as Gem);
-      })
-      .filter(
-        (gem) =>
-          gem.name?.toLowerCase().includes(searchLower) ||
-          gem.description?.toLowerCase().includes(searchLower)
-      )
-      .slice(0, limit);
+    // Filter for additional tokens (AND logic)
+    if (searchTokens.length > 1) {
+      results = results.filter((gem) => {
+        const keywords = gem.searchKeywords || [];
+        return searchTokens.every(token =>
+          keywords.some(keyword => keyword.startsWith(token) || keyword === token)
+        );
+      });
+    }
+
+    // Sort by rating and limit
+    results.sort((a, b) => b.ratingAvg - a.ratingAvg);
+    results = results.slice(0, limitCount);
 
     return {
       success: true,
@@ -286,6 +351,9 @@ export async function createGemAction(
   data: CreateGemInput & { submittedBy: string }
 ): Promise<ServerActionResult<{ id: string }>> {
   try {
+    // Generate search keywords from name and description
+    const searchKeywords = generateSearchKeywords(data.name, data.description);
+    
     const gemRef = doc(collection(db, "gems"));
     await setDoc(gemRef, {
       ...data,
@@ -293,6 +361,7 @@ export async function createGemAction(
       status: "pending",
       ratingAvg: 0,
       reviewCount: 0,
+      searchKeywords,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -329,10 +398,20 @@ export async function updateGemAction(
       };
     }
 
-    await updateDoc(gemRef, {
+    const existingData = gemDoc.data();
+    const updateData: Record<string, unknown> = {
       ...data,
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    // Regenerate search keywords if name or description changed
+    if (data.name || data.description) {
+      const newName = data.name || existingData.name;
+      const newDescription = data.description || existingData.description;
+      updateData.searchKeywords = generateSearchKeywords(newName, newDescription);
+    }
+
+    await updateDoc(gemRef, updateData);
 
     return {
       success: true,

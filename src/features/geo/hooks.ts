@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { Coordinates } from "@/lib/geo";
 
 export interface UseUserLocationOptions {
@@ -143,5 +144,72 @@ export function useDistanceToTarget(
     distance,
     isLoading,
     error,
+  };
+}
+
+/**
+ * Fetches address from coordinates using Google Maps Geocoding API
+ */
+async function fetchAddressFromCoordinates(
+  lat: number,
+  lng: number
+): Promise<string | null> {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    console.warn("Google Maps API key not configured");
+    return null;
+  }
+
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=id`;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Failed to fetch address");
+  }
+
+  const data = await response.json();
+  if (data.status === "OK" && data.results?.[0]) {
+    return data.results[0].formatted_address;
+  }
+
+  return null;
+}
+
+export interface UseReverseGeocodeReturn {
+  /** The formatted address string */
+  address: string | null;
+  /** Whether the address is currently being fetched */
+  isLoading: boolean;
+  /** Error message if geocoding failed */
+  error: Error | null;
+}
+
+/**
+ * Hook to perform reverse geocoding (coordinates to address)
+ * Uses TanStack Query for caching and deduplication
+ */
+export function useReverseGeocode(
+  coordinates: Coordinates | null | undefined
+): UseReverseGeocodeReturn {
+  const { data: address, isLoading, error } = useQuery({
+    queryKey: ["reverse-geocode", coordinates?.lat, coordinates?.lng],
+    queryFn: () => {
+      if (!coordinates?.lat || !coordinates?.lng) {
+        return null;
+      }
+      return fetchAddressFromCoordinates(coordinates.lat, coordinates.lng);
+    },
+    enabled: Boolean(coordinates?.lat && coordinates?.lng),
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours - addresses don't change often
+    gcTime: 1000 * 60 * 60 * 24 * 7, // 7 days garbage collection time
+    retry: 1,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+  return {
+    address: address ?? null,
+    isLoading,
+    error: error as Error | null,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -29,7 +29,7 @@ import { toDate } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUserAction } from "@/actions/auth";
-import { useDistanceToTarget } from "@/features/geo/hooks";
+import { useDistanceToTarget, useReverseGeocode } from "@/features/geo/hooks";
 import { formatDistance } from "@/lib/geo";
 
 interface GemDetailPageProps {
@@ -44,9 +44,8 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [locationAddress, setLocationAddress] = useState<string>("");
 
-  const { data: userResult } = useQuery({
+  const { data: userResult, isLoading: userLoading } = useQuery({
     queryKey: ["auth-user"],
     queryFn: getCurrentUserAction,
     staleTime: 1000 * 60 * 5,
@@ -58,7 +57,7 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
     data: gemResult,
     isLoading: gemLoading,
     refetch: refetchGem,
-  } = useGemDetail(gemId);
+  } = useGemDetail(gemId, user?.uid, user?.role);
   const {
     data: reviewsResult,
     isLoading: reviewsLoading,
@@ -67,68 +66,43 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
 
   const gem = gemResult?.success ? gemResult.data : null;
   const reviews = reviewsResult?.success ? reviewsResult.data : [];
-  const isLoading = gemLoading || reviewsLoading;
 
   // Get distance to gem using the custom hook
   const { distance: distanceToGem } = useDistanceToTarget(
     gem ? { lat: gem.coordinates.lat, lng: gem.coordinates.lng } : null
   );
 
-  // Fetch location address from Google Maps Geocoding API
-  useEffect(() => {
-    if (gem?.coordinates?.lat && gem?.coordinates?.lng) {
-      const fetchAddress = async () => {
-        try {
-          const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-          const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${gem.coordinates.lat},${gem.coordinates.lng}&key=${apiKey}`;
-
-          const response = await fetch(url);
-          const data = await response.json();
-
-          if (data.status === "OK" && data.results && data.results.length > 0) {
-            // Get the formatted address or extract locality
-            const addressComponents = data.results[0].address_components;
-            const locality =
-              addressComponents.find((c: { types: string[] }) =>
-                c.types.includes("locality")
-              )?.long_name || "";
-            const adminArea =
-              addressComponents.find((c: { types: string[] }) =>
-                c.types.includes("administrative_area_level_1")
-              )?.long_name || "";
-
-            const address =
-              locality && adminArea
-                ? `${locality}, ${adminArea}`
-                : data.results[0].formatted_address;
-
-            setLocationAddress(address);
-          } else {
-            console.error(
-              "Geocoding API error:",
-              data.status,
-              data.error_message
-            );
-            setLocationAddress("Lokasi tidak tersedia");
-          }
-        } catch (error) {
-          console.error("Failed to fetch address:", error);
-          setLocationAddress("Lokasi tidak tersedia");
-        }
-      };
-      fetchAddress();
-    }
-  }, [gem?.coordinates?.lat, gem?.coordinates?.lng]);
+  // Get location address using reverse geocoding hook
+  const { address: locationAddress } = useReverseGeocode(
+    gem ? { lat: gem.coordinates.lat, lng: gem.coordinates.lng } : null
+  );
 
   // Check if user has already reviewed this gem
   const hasUserReviewed =
     reviews?.some((review) => review.userId === user?.uid) || false;
 
-  if (isLoading) {
+  // Show loading while checking auth or fetching gem
+  if (userLoading || gemLoading || reviewsLoading) {
     return (
       <>
         <Header />
         <GemDetailSkeleton />
+      </>
+    );
+  }
+
+  // Handle access denied (different from not found)
+  if (gemResult && !gemResult.success) {
+    const isAccessDenied = gemResult.message?.includes("tidak memiliki akses");
+    return (
+      <>
+        <Header />
+        <EmptyState
+          title={isAccessDenied ? "Akses Ditolak" : "Destinasi Tidak Ditemukan"}
+          description={
+            gemResult.message || "Destinasi yang Anda cari tidak ditemukan."
+          }
+        />
       </>
     );
   }

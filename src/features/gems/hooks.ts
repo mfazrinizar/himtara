@@ -32,10 +32,10 @@ export function useGemList(
 /**
  * Get a single gem by ID
  */
-export function useGemDetail(id: string) {
+export function useGemDetail(id: string, userId?: string, userRole?: string) {
   return useQuery({
-    queryKey: ["gem", id],
-    queryFn: () => getGemByIdAction(id),
+    queryKey: ["gem", id, userId, userRole],
+    queryFn: () => getGemByIdAction(id, userId, userRole),
     enabled: !!id,
     staleTime: 1000 * 60 * 5,
   });

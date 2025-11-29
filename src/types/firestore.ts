@@ -59,6 +59,7 @@ export interface Gem {
   submittedBy: string;
   ratingAvg: number;
   reviewCount: number;
+  searchKeywords?: string[]; // Lowercase keywords for search
   createdAt: Timestamp | SerializedTimestamp;
   updatedAt?: Timestamp | SerializedTimestamp;
   verifiedBy?: string;
