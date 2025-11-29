@@ -25,8 +25,6 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUserAction } from "@/actions/auth";
-import { storage } from "@/lib/firebase/client";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export function GemSubmitPage() {
   const router = useRouter();
@@ -108,8 +106,8 @@ export function GemSubmitPage() {
 
     setIsUploading(true);
     try {
-      const imageUrls: string[] = [];
-
+      // Validate files before upload
+      const validFiles: File[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
@@ -119,25 +117,38 @@ export function GemSubmitPage() {
           continue;
         }
 
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`${file.name} terlalu besar (maksimal 5MB)`);
+        // Validate file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} terlalu besar (maksimal 10MB)`);
           continue;
         }
 
-        // Create unique filename
-        const timestamp = Date.now();
-        const filename = `gems/${user.uid}/${timestamp}_${i}_${file.name}`;
-        const storageRef = ref(storage, filename);
-
-        // Upload to Firebase Storage
-        await uploadBytes(storageRef, file);
-
-        // Get download URL
-        const downloadURL = await getDownloadURL(storageRef);
-        imageUrls.push(downloadURL);
+        validFiles.push(file);
       }
 
+      if (validFiles.length === 0) {
+        setIsUploading(false);
+        return;
+      }
+
+      // Upload via API route
+      const formData = new FormData();
+      validFiles.forEach((file) => formData.append("files", file));
+      formData.append("type", "gems");
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        toast.error(result.message || "Gagal mengunggah gambar");
+        return;
+      }
+
+      const imageUrls = result.data?.urls || [];
       if (imageUrls.length > 0) {
         setValue("images", [...(images || []), ...imageUrls]);
         toast.success(`${imageUrls.length} gambar berhasil diunggah`);
