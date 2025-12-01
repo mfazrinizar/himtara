@@ -35,17 +35,17 @@ export const CACHE_DURATION = {
  * Call this when gems are created, updated, or deleted
  */
 export function revalidateGemsCache() {
-  revalidateTag(CACHE_TAGS.GEMS_LIST);
-  revalidateTag(CACHE_TAGS.GEMS_APPROVED);
-  revalidateTag(CACHE_TAGS.GEMS_SEARCH);
-  revalidateTag(CACHE_TAGS.GEM_STATS);
+  revalidateTag(CACHE_TAGS.GEMS_LIST, "max");
+  revalidateTag(CACHE_TAGS.GEMS_APPROVED, "max");
+  revalidateTag(CACHE_TAGS.GEMS_SEARCH, "max");
+  revalidateTag(CACHE_TAGS.GEM_STATS, "max");
 }
 
 /**
  * Revalidate a specific gem's cache
  */
 export function revalidateGemCache(gemId: string) {
-  revalidateTag(CACHE_TAGS.GEM_DETAIL(gemId));
+  revalidateTag(CACHE_TAGS.GEM_DETAIL(gemId), "max");
   revalidateGemsCache();
 }
 
@@ -53,9 +53,9 @@ export function revalidateGemCache(gemId: string) {
  * Revalidate reviews cache for a gem
  */
 export function revalidateReviewsCache(gemId: string) {
-  revalidateTag(CACHE_TAGS.REVIEWS);
-  revalidateTag(CACHE_TAGS.GEM_REVIEWS(gemId));
-  revalidateTag(CACHE_TAGS.GEM_DETAIL(gemId));
+  revalidateTag(CACHE_TAGS.REVIEWS, "max");
+  revalidateTag(CACHE_TAGS.GEM_REVIEWS(gemId), "max");
+  revalidateTag(CACHE_TAGS.GEM_DETAIL(gemId), "max");
 }
 
 /**
