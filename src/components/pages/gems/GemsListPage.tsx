@@ -22,6 +22,17 @@ import { formatDistance } from "@/lib/geo";
 
 type SortMode = "rating" | "nearest";
 
+// Distance options for max distance filter (in km)
+const DISTANCE_OPTIONS = [
+  { value: 50, label: "50 km" },
+  { value: 100, label: "100 km" },
+  { value: 250, label: "250 km" },
+  { value: 500, label: "500 km" },
+  { value: 1000, label: "1000 km" },
+  { value: 2500, label: "2500 km" },
+  { value: 5000, label: "5000 km" },
+] as const;
+
 // Island banner colors, patterns, and background images
 const ISLAND_BANNERS: Record<
   Island,
@@ -72,6 +83,7 @@ export function GemsListPage() {
   const [minRating, setMinRating] = useState<number | undefined>();
   const [sortMode, setSortMode] = useState<SortMode>("rating");
   const [selectedIsland, setSelectedIsland] = useState<Island>("nusantara");
+  const [maxDistanceKm, setMaxDistanceKm] = useState<number>(1000);
   const pageSize = 10;
 
   // User location hook
@@ -106,6 +118,7 @@ export function GemsListPage() {
         searchQuery: searchQuery || undefined,
         minRating,
         island: selectedIsland !== "nusantara" ? selectedIsland : undefined,
+        maxDistanceKm,
       },
       { page, pageSize }
     );
@@ -142,6 +155,11 @@ export function GemsListPage() {
 
   const handleIslandChange = (island: Island) => {
     setSelectedIsland(island);
+    setPage(1);
+  };
+
+  const handleMaxDistanceChange = (distance: number) => {
+    setMaxDistanceKm(distance);
     setPage(1);
   };
 
@@ -318,7 +336,7 @@ export function GemsListPage() {
               <div className="w-px h-8 bg-border mx-1 hidden lg:block" />
 
               {/* Sort Options */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   variant={sortMode === "rating" ? "default" : "outline"}
                   size="sm"
@@ -329,21 +347,40 @@ export function GemsListPage() {
                   <span className="hidden sm:inline">Rating Tertinggi</span>
                   <span className="sm:hidden">Rating</span>
                 </Button>
-                <Button
-                  variant={sortMode === "nearest" ? "default" : "outline"}
-                  size="sm"
-                  className="gap-1.5 h-11 sm:h-12 px-4"
-                  onClick={() => handleSortModeChange("nearest")}
-                  disabled={locationLoading}
-                >
-                  {locationLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Navigation className="w-3.5 h-3.5" />
+
+                <div className="flex gap-2 items-center flex-nowrap">
+                  <Button
+                    variant={sortMode === "nearest" ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5 h-11 sm:h-12 px-4"
+                    onClick={() => handleSortModeChange("nearest")}
+                    disabled={locationLoading}
+                  >
+                    {locationLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Navigation className="w-3.5 h-3.5" />
+                    )}
+                    <span className="hidden sm:inline">Terdekat</span>
+                    <span className="md:hidden">Dekat</span>
+                  </Button>
+
+                  {sortMode === "nearest" && (
+                    <select
+                      value={maxDistanceKm}
+                      onChange={(e) =>
+                        handleMaxDistanceChange(Number(e.target.value))
+                      }
+                      className="h-11 sm:h-12 px-2 sm:px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      {DISTANCE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   )}
-                  <span className="hidden sm:inline">Terdekat</span>
-                  <span className="sm:hidden">Dekat</span>
-                </Button>
+                </div>
               </div>
             </div>
           </div>
