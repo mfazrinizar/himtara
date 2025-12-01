@@ -54,6 +54,7 @@ export interface Gem {
     lat: number;
     lng: number;
   };
+  geohash?: string; 
   images: string[];
   status: GemStatus;
   submittedBy: string;

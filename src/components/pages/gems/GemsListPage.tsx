@@ -16,9 +16,10 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
 import { Pagination } from "@/components/shared/Pagination";
-import { useGemList } from "@/features/gems/hooks";
+import { useGemList, useGemsByProximity } from "@/features/gems/hooks";
 import { useUserLocation } from "@/features/geo/hooks";
-import { sortByDistance, formatDistance } from "@/lib/geo";
+import { formatDistance } from "@/lib/geo";
+import type { Gem } from "@/types/firestore";
 
 type SortMode = "rating" | "nearest";
 
@@ -82,7 +83,11 @@ export function GemsListPage() {
     requestLocation,
   } = useUserLocation();
 
-  const { data: response, isLoading } = useGemList(
+  // Use different queries based on sort mode
+  const isNearestMode = sortMode === "nearest" && userLocation;
+
+  // Regular query for rating-based sorting
+  const { data: ratingResponse, isLoading: ratingLoading } = useGemList(
     {
       status: "approved",
       searchQuery: searchQuery || undefined,
@@ -94,19 +99,27 @@ export function GemsListPage() {
     { page, pageSize }
   );
 
-  // Process and sort gems
-  const gems = useMemo(() => {
+  // Proximity query for distance-based sorting
+  const { data: proximityResponse, isLoading: proximityLoading } =
+    useGemsByProximity(
+      isNearestMode ? userLocation : null,
+      {
+        searchQuery: searchQuery || undefined,
+        minRating,
+        island: selectedIsland !== "nusantara" ? selectedIsland : undefined,
+      },
+      { page, pageSize }
+    );
+
+  // Select the appropriate response based on sort mode
+  const response = isNearestMode ? proximityResponse : ratingResponse;
+  const isLoading = isNearestMode ? proximityLoading : ratingLoading;
+
+  // Process gems - no client-side sorting needed anymore
+  const gems = useMemo<(Gem & { distance?: number })[]>(() => {
     if (!response?.success || !response.data) return [];
-
-    const gemsList = response.data.data;
-
-    // If sorting by nearest and we have user location, calculate distances and sort
-    if (sortMode === "nearest" && userLocation) {
-      return sortByDistance(gemsList, userLocation, (gem) => gem.coordinates);
-    }
-
-    return gemsList;
-  }, [response, sortMode, userLocation]);
+    return response.data.data;
+  }, [response]);
 
   const pagination = useMemo(() => {
     if (!response?.success || !response.data) {
@@ -258,8 +271,8 @@ export function GemsListPage() {
         >
           <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">
             {selectedIsland === "nusantara"
-              ? "Jelajahi Destinasi Wisata"
-              : `Destinasi di ${currentIslandData.label}`}
+              ? "Jelajahi Destinasi Wisata Nusantara"
+              : `Destinasi di Pulau ${currentIslandData.label}`}
           </h2>
 
           {/* Desktop: Side by side layout */}
@@ -410,11 +423,7 @@ export function GemsListPage() {
                 >
                   <GemCard
                     gem={gem}
-                    distance={
-                      sortMode === "nearest" && userLocation
-                        ? (gem as Gem & { distance?: number }).distance
-                        : undefined
-                    }
+                    distance={sortMode === "nearest" ? gem.distance : undefined}
                   />
                 </motion.div>
               ))}

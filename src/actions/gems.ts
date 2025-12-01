@@ -20,10 +20,23 @@ import {
   QueryConstraint,
   Timestamp,
 } from "firebase/firestore";
+import { unstable_cache } from "next/cache";
 import { db } from "@/lib/firebase/client";
 import type { ServerActionResult, Gem, Review } from "@/types/firestore";
 import type { CreateGemInput, CreateReviewInput } from "@/schemas";
 import { generateSearchKeywords, generateSearchTokens } from "@/lib/utils";
+import { 
+  encodeGeohash, 
+  calculateDistance, 
+  type Coordinates 
+} from "@/lib/geo";
+import {
+  CACHE_TAGS,
+  CACHE_DURATION,
+  revalidateGemsCache,
+  revalidateGemCache,
+  revalidateReviewsCache,
+} from "@/lib/cache";
 
 // Helper function to convert Firestore Timestamp to plain object
 function serializeTimestamp(
@@ -89,10 +102,10 @@ export interface PaginatedResponse<T> {
 }
 
 /**
- * Get paginated and filtered list of gems
- * Uses Firestore array-contains-any for efficient keyword search
+ * Internal function to fetch gems from Firestore
+ * This is wrapped with caching for approved public gems
  */
-export async function getGemsAction(
+async function fetchGemsInternal(
   filters: GemFilters = {},
   pagination: PaginationParams = {}
 ): Promise<ServerActionResult<PaginatedResponse<Gem>>> {
@@ -223,6 +236,43 @@ export async function getGemsAction(
 }
 
 /**
+ * Cached version of fetchGemsInternal for approved public gems
+ */
+const getCachedApprovedGems = unstable_cache(
+  async (cacheKey: string, filters: GemFilters, pagination: PaginationParams) => {
+    return fetchGemsInternal(filters, pagination);
+  },
+  ["approved-gems"],
+  {
+    tags: [CACHE_TAGS.GEMS_LIST, CACHE_TAGS.GEMS_APPROVED],
+    revalidate: CACHE_DURATION.LONG, // 1 hour, but will be invalidated on changes
+  }
+);
+
+/**
+ * Get paginated and filtered list of gems
+ * Uses caching for approved public gems, direct fetch for user-specific queries
+ */
+export async function getGemsAction(
+  filters: GemFilters = {},
+  pagination: PaginationParams = {}
+): Promise<ServerActionResult<PaginatedResponse<Gem>>> {
+  // Only cache approved public gems without user-specific filters
+  const isPublicApprovedQuery = 
+    !filters.submittedBy && 
+    (!filters.status || filters.status === "approved");
+
+  if (isPublicApprovedQuery) {
+    // Create cache key from filters and pagination
+    const cacheKey = JSON.stringify({ filters, pagination });
+    return getCachedApprovedGems(cacheKey, filters, pagination);
+  }
+
+  // For user-specific queries (e.g., my submissions), fetch directly
+  return fetchGemsInternal(filters, pagination);
+}
+
+/**
  * Get a single gem by ID
  * Uses Admin SDK and performs manual authorization check
  */
@@ -345,6 +395,121 @@ export async function searchGemsAction(
 }
 
 /**
+ * Cached fetch of all approved gems for proximity sorting
+ * Since distance calculation depends on user location, we cache the base gems
+ * and calculate distance per-request
+ */
+const getCachedApprovedGemsForProximity = unstable_cache(
+  async (island?: string) => {
+    const constraints: QueryConstraint[] = [
+      where("status", "==", "approved"),
+    ];
+
+    if (island && island !== "nusantara") {
+      constraints.push(where("island", "==", island));
+    }
+
+    constraints.push(limit(500)); // Reasonable limit for small datasets
+
+    const gemsQuery = query(collection(db, "gems"), ...constraints);
+    const snapshot = await getDocs(gemsQuery);
+
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return serializeGem({ id: doc.id, ...data } as Gem);
+    });
+  },
+  ["approved-gems-proximity"],
+  {
+    tags: [CACHE_TAGS.GEMS_LIST, CACHE_TAGS.GEMS_APPROVED],
+    revalidate: CACHE_DURATION.LONG,
+  }
+);
+
+/**
+ * Get gems sorted by proximity to user location
+ * 
+ * Strategy:
+ * - Uses cached approved gems list for small datasets
+ * - Distance calculation per-request based on user location
+ */
+export async function getGemsByProximityAction(
+  userLocation: Coordinates,
+  filters: {
+    searchQuery?: string;
+    minRating?: number;
+    island?: string;
+    maxDistanceKm?: number;
+  } = {},
+  pagination: PaginationParams = {}
+): Promise<ServerActionResult<PaginatedResponse<Gem & { distance: number }>>> {
+  try {
+    const { searchQuery, minRating, island, maxDistanceKm = 1000 } = filters;
+    const { page = 1, pageSize = 10 } = pagination;
+
+    // Generate search tokens
+    const searchTokens = searchQuery ? generateSearchTokens(searchQuery) : [];
+    const hasSearch = searchTokens.length > 0;
+
+    // Use cached gems for base data - this avoids Firestore reads on every request
+    const allGems = await getCachedApprovedGemsForProximity(island);
+
+    // Apply filters
+    let filteredGems = allGems;
+
+    // Apply search filter
+    if (hasSearch) {
+      filteredGems = filteredGems.filter((gem) => {
+        const keywords = gem.searchKeywords || [];
+        return searchTokens.every(token =>
+          keywords.some(keyword => keyword.startsWith(token) || keyword === token)
+        );
+      });
+    }
+
+    // Apply rating filter
+    if (minRating !== undefined && minRating > 0) {
+      filteredGems = filteredGems.filter(gem => gem.ratingAvg >= minRating);
+    }
+
+    // Calculate distance, filter by maxDistance, and sort
+    const gemsWithDistance = filteredGems
+      .map(gem => ({
+        ...gem,
+        distance: calculateDistance(userLocation, gem.coordinates),
+      }))
+      .filter(gem => gem.distance <= maxDistanceKm)
+      .sort((a, b) => a.distance - b.distance);
+
+    // Paginate
+    const totalCount = gemsWithDistance.length;
+    const startIndex = (page - 1) * pageSize;
+    const hasMore = totalCount > startIndex + pageSize;
+    const paginatedGems = gemsWithDistance.slice(startIndex, startIndex + pageSize);
+
+    return {
+      success: true,
+      message: "Berhasil mengambil destinasi terdekat.",
+      data: {
+        data: paginatedGems,
+        pagination: {
+          page,
+          pageSize,
+          totalCount,
+          hasMore,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching gems by proximity:", error);
+    return {
+      success: false,
+      message: "Gagal mengambil destinasi terdekat.",
+    };
+  }
+}
+
+/**
  * Create a new gem
  */
 export async function createGemAction(
@@ -354,6 +519,9 @@ export async function createGemAction(
     // Generate search keywords from name and description
     const searchKeywords = generateSearchKeywords(data.name, data.description);
     
+    // Generate geohash from coordinates for proximity queries
+    const geohash = encodeGeohash(data.coordinates.lat, data.coordinates.lng, 9);
+    
     const gemRef = doc(collection(db, "gems"));
     await setDoc(gemRef, {
       ...data,
@@ -362,9 +530,13 @@ export async function createGemAction(
       ratingAvg: 0,
       reviewCount: 0,
       searchKeywords,
+      geohash,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    // Invalidate gems cache (pending gems might affect admin views)
+    revalidateGemsCache();
 
     return {
       success: true,
@@ -411,7 +583,15 @@ export async function updateGemAction(
       updateData.searchKeywords = generateSearchKeywords(newName, newDescription);
     }
 
+    // Regenerate geohash if coordinates changed
+    if (data.coordinates) {
+      updateData.geohash = encodeGeohash(data.coordinates.lat, data.coordinates.lng, 9);
+    }
+
     await updateDoc(gemRef, updateData);
+
+    // Invalidate cache for this gem and lists
+    revalidateGemCache(id);
 
     return {
       success: true,
@@ -445,6 +625,9 @@ export async function deleteGemAction(
 
     await deleteDoc(gemRef);
 
+    // Invalidate cache
+    revalidateGemCache(id);
+
     return {
       success: true,
       message: "Destinasi berhasil dihapus.",
@@ -459,9 +642,9 @@ export async function deleteGemAction(
 }
 
 /**
- * Get reviews for a gem with pagination
+ * Internal function to fetch reviews
  */
-export async function getGemReviewsAction(
+async function fetchReviewsInternal(
   gemId: string,
   limitCount: number = 10
 ): Promise<ServerActionResult<Review[]>> {
@@ -515,6 +698,26 @@ export async function getGemReviewsAction(
       message: "Gagal mengambil ulasan.",
     };
   }
+}
+
+/**
+ * Get reviews for a gem with pagination (cached)
+ */
+export async function getGemReviewsAction(
+  gemId: string,
+  limitCount: number = 10
+): Promise<ServerActionResult<Review[]>> {
+  // Use dynamic tag for per-gem cache invalidation
+  const getCachedReviewsForGem = unstable_cache(
+    async () => fetchReviewsInternal(gemId, limitCount),
+    [`gem-reviews-${gemId}`],
+    {
+      tags: [CACHE_TAGS.REVIEWS, CACHE_TAGS.GEM_REVIEWS(gemId)],
+      revalidate: CACHE_DURATION.MEDIUM,
+    }
+  );
+  
+  return getCachedReviewsForGem();
 }
 
 /**
@@ -575,6 +778,10 @@ export async function createReviewAction(
       reviewCount: reviews.length,
       updatedAt: serverTimestamp(),
     });
+
+    // Invalidate caches - reviews affect gem ratings
+    revalidateReviewsCache(data.gemId);
+    revalidateGemsCache(); // Rating changed
 
     return {
       success: true,
@@ -700,6 +907,9 @@ export async function adminUpdateGemStatusAction(
 
     await updateDoc(gemRef, updateData);
 
+    // Invalidate cache - status change affects public listing
+    revalidateGemCache(id);
+
     const statusText = status === "approved" ? "disetujui" : "ditolak";
     return {
       success: true,
@@ -715,9 +925,9 @@ export async function adminUpdateGemStatusAction(
 }
 
 /**
- * Get gem statistics for dashboard (uses Admin SDK to bypass rules)
+ * Internal function to fetch gem stats
  */
-export async function getGemStatsAction(): Promise<
+async function fetchGemStatsInternal(): Promise<
   ServerActionResult<{
     total: number;
     approved: number;
@@ -742,7 +952,7 @@ export async function getGemStatsAction(): Promise<
       approved: approvedGems.length,
       pending: gems.filter((g) => g.status === "pending").length,
       rejected: gems.filter((g) => g.status === "rejected").length,
-      avgRating: Math.round(avgRating * 10) / 10, // Round to 1 decimal
+      avgRating: Math.round(avgRating * 10) / 10,
     };
 
     return {
@@ -757,4 +967,31 @@ export async function getGemStatsAction(): Promise<
       message: "Gagal mengambil statistik.",
     };
   }
+}
+
+/**
+ * Cached gem stats
+ */
+const getCachedGemStats = unstable_cache(
+  fetchGemStatsInternal,
+  ["gem-stats"],
+  {
+    tags: [CACHE_TAGS.GEM_STATS],
+    revalidate: CACHE_DURATION.MEDIUM, // 5 minutes
+  }
+);
+
+/**
+ * Get gem statistics for dashboard (cached)
+ */
+export async function getGemStatsAction(): Promise<
+  ServerActionResult<{
+    total: number;
+    approved: number;
+    pending: number;
+    rejected: number;
+    avgRating: number;
+  }>
+> {
+  return getCachedGemStats();
 }

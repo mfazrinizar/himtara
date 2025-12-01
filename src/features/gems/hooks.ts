@@ -10,10 +10,12 @@ import {
   getGemReviewsAction,
   getGemStatsAction,
   adminUpdateGemStatusAction,
+  getGemsByProximityAction,
   type GemFilters,
   type PaginationParams,
 } from "@/actions/gems";
 import type { CreateGemInput, CreateReviewInput } from "@/schemas";
+import type { Coordinates } from "@/lib/geo";
 
 /**
  * Get paginated and filtered list of gems
@@ -50,6 +52,28 @@ export function useSearchGems(searchQuery: string, limitCount?: number) {
     queryFn: () => searchGemsAction(searchQuery, limitCount),
     enabled: searchQuery.length >= 2,
     staleTime: 1000 * 30, // 30 seconds
+  });
+}
+
+/**
+ * Get gems sorted by proximity to user location
+ * All pagination is handled server-side with correct distance sorting
+ */
+export function useGemsByProximity(
+  userLocation: Coordinates | null,
+  filters: {
+    searchQuery?: string;
+    minRating?: number;
+    island?: string;
+    maxDistanceKm?: number;
+  } = {},
+  pagination: PaginationParams = {}
+) {
+  return useQuery({
+    queryKey: ["gems-proximity", userLocation, filters, pagination],
+    queryFn: () => getGemsByProximityAction(userLocation!, filters, pagination),
+    enabled: !!userLocation, // Only fetch when we have user location
+    staleTime: 1000 * 60 * 2, // 2 minutes - location-based queries are more time-sensitive
   });
 }
 

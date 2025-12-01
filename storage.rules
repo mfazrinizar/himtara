@@ -1,0 +1,81 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if file is an image
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // Check file size (max 5MB)
+    function isValidSize() {
+      return request.resource.size <= 5 * 1024 * 1024;
+    }
+    
+    // Check if user owns the file path
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ============================================
+    // GEM IMAGES - gems/{userId}/{filename}
+    // ============================================
+    match /gems/{userId}/{allPaths=**} {
+      // Anyone can read gem images (public for displaying on site)
+      allow read: if true;
+      
+      // Only authenticated users can upload to their own folder
+      // Must be an image and under 5MB
+      allow create: if isOwner(userId)
+                    && isImage()
+                    && isValidSize();
+      
+      // Users can update/replace their own images
+      allow update: if isOwner(userId)
+                    && isImage()
+                    && isValidSize();
+      
+      // Users can delete their own images
+      // Note: In production, consider only allowing admins to delete
+      // to prevent orphaned references in Firestore
+      allow delete: if isOwner(userId);
+    }
+
+    // ============================================
+    // USER AVATARS - avatars/{userId}/{filename}
+    // ============================================
+    match /avatars/{userId}/{allPaths=**} {
+      // Anyone can read avatars (public for displaying)
+      allow read: if true;
+      
+      // Only authenticated users can upload to their own avatar folder
+      allow create: if isOwner(userId)
+                    && isImage()
+                    && isValidSize();
+      
+      // Users can update their own avatar
+      allow update: if isOwner(userId)
+                    && isImage()
+                    && isValidSize();
+      
+      // Users can delete their own avatar
+      allow delete: if isOwner(userId);
+    }
+
+    // ============================================
+    // CATCH-ALL - Deny everything else
+    // ============================================
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -2,63 +2,131 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is authenticated
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    
+    // Check if user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Helper function to check if user is admin
+    // Check if user is admin (with caching consideration)
     function isAdmin() {
       return isAuthenticated() && 
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    // Helper function to check if user owns the document
+    // Check if user owns the document by UID
     function isOwner(uid) {
       return isAuthenticated() && request.auth.uid == uid;
     }
+    
+    // Check if user is active (not banned)
+    function isActiveUser() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active';
+    }
+    
+    // Validate string field
+    function isValidString(field, minLen, maxLen) {
+      return field is string && field.size() >= minLen && field.size() <= maxLen;
+    }
+    
+    // Validate number range
+    function isValidNumber(field, min, max) {
+      return field is number && field >= min && field <= max;
+    }
 
-    // Users collection
+    // ============================================
+    // USERS COLLECTION
+    // ============================================
     match /users/{userId} {
-      // Anyone authenticated can read any user
+      // Authenticated users can read any user profile
       allow read: if isAuthenticated();
       
-      // Users can create their own document during registration
-      allow create: if isAuthenticated() && request.auth.uid == userId;
+      // Users can only create their own document during registration
+      allow create: if isAuthenticated() 
+                    && request.auth.uid == userId
+                    && request.resource.data.uid == userId
+                    && request.resource.data.role == 'user'
+                    && request.resource.data.status == 'active'
+                    && isValidString(request.resource.data.email, 5, 255)
+                    && isValidString(request.resource.data.displayName, 1, 100);
       
-      // Users can update their own document, admins can update any
-      allow update: if isOwner(userId) || isAdmin();
+      // Users can update their own non-sensitive fields
+      // Admins can update any user (including role and status)
+      allow update: if isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'banReason', 'bannedAt'])
+                    || isAdmin();
       
       // Only admins can delete users
       allow delete: if isAdmin();
     }
 
-    // Gems collection
+    // ============================================
+    // GEMS COLLECTION
+    // ============================================
     match /gems/{gemId} {
-      // Anyone can read approved gems
-      allow read: if resource.data.status == 'approved' || isAuthenticated();
+      // Read rules:
+      // - Anyone can read approved gems (public listing)
+      // - Authenticated users can read their own gems (any status)
+      // - Admins can read all gems
+      allow read: if resource.data.status == 'approved' 
+                  || (isAuthenticated() && resource.data.submittedBy == request.auth.uid)
+                  || isAdmin();
       
-      // Authenticated users can create gems
-      allow create: if isAuthenticated();
+      // Only active authenticated users can create gems
+      allow create: if isActiveUser()
+                    && request.resource.data.submittedBy == request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.ratingAvg == 0
+                    && request.resource.data.reviewCount == 0
+                    && isValidString(request.resource.data.name, 3, 200)
+                    && isValidString(request.resource.data.description, 10, 2000)
+                    && request.resource.data.images is list
+                    && request.resource.data.images.size() >= 1
+                    && request.resource.data.images.size() <= 10
+                    && request.resource.data.coordinates.lat is number
+                    && request.resource.data.coordinates.lng is number;
       
-      // Users can update their own gems, admins can update any
-      allow update: if isAuthenticated();
+      // Owner can update their own pending gems (limited fields)
+      // Admin can update any gem (approve/reject/edit)
+      allow update: if (isActiveUser() 
+                       && resource.data.submittedBy == request.auth.uid 
+                       && resource.data.status == 'pending'
+                       && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'verifiedBy', 'verifiedAt', 'submittedBy', 'ratingAvg', 'reviewCount']))
+                    || isAdmin();
       
-      // Admins can delete any gem
+      // Only admins can delete gems
       allow delete: if isAdmin();
     }
 
-    // Reviews collection
+    // ============================================
+    // REVIEWS COLLECTION
+    // ============================================
     match /reviews/{reviewId} {
-      // Anyone can read reviews
+      // Anyone can read reviews (public)
       allow read: if true;
       
-      // Authenticated users can create reviews
-      allow create: if isAuthenticated();
+      // Only active authenticated users can create reviews
+      allow create: if isActiveUser()
+                    && request.resource.data.userId == request.auth.uid
+                    && isValidString(request.resource.data.gemId, 1, 100)
+                    && isValidNumber(request.resource.data.rating, 1, 5)
+                    && isValidString(request.resource.data.comment, 1, 1000);
       
-      // Users can update/delete their own reviews
-      allow update, delete: if isAuthenticated() && 
-                               resource.data.userId == request.auth.uid;
+      // Users can only update their own reviews (limited fields)
+      allow update: if isActiveUser() 
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.gemId == resource.data.gemId
+                    && isValidNumber(request.resource.data.rating, 1, 5)
+                    && isValidString(request.resource.data.comment, 1, 1000);
+      
+      // Users can delete their own reviews, admins can delete any
+      allow delete: if (isAuthenticated() && resource.data.userId == request.auth.uid)
+                    || isAdmin();
     }
+    
   }
 }
