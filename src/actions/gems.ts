@@ -120,7 +120,7 @@ async function fetchGemsInternal(
       sortOrder = "desc",
     } = filters;
 
-    const { page = 1, pageSize = 10 } = pagination;
+    const { page = 1, pageSize = 9 } = pagination;
 
     // Generate search tokens from query
     const searchTokens = searchQuery ? generateSearchTokens(searchQuery) : [];
@@ -445,7 +445,7 @@ export async function getGemsByProximityAction(
 ): Promise<ServerActionResult<PaginatedResponse<Gem & { distance: number }>>> {
   try {
     const { searchQuery, minRating, island, maxDistanceKm = 1000 } = filters;
-    const { page = 1, pageSize = 10 } = pagination;
+    const { page = 1, pageSize = 9 } = pagination;
 
     // Generate search tokens
     const searchTokens = searchQuery ? generateSearchTokens(searchQuery) : [];

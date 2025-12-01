@@ -84,7 +84,7 @@ export function GemsListPage() {
   const [sortMode, setSortMode] = useState<SortMode>("rating");
   const [selectedIsland, setSelectedIsland] = useState<Island>("nusantara");
   const [maxDistanceKm, setMaxDistanceKm] = useState<number>(1000);
-  const pageSize = 10;
+  const pageSize = 9;
 
   // User location hook
   const {
