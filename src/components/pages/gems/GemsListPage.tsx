@@ -19,7 +19,6 @@ import { Pagination } from "@/components/shared/Pagination";
 import { useGemList, useGemsByProximity } from "@/features/gems/hooks";
 import { useUserLocation } from "@/features/geo/hooks";
 import { formatDistance } from "@/lib/geo";
-import type { Gem } from "@/types/firestore";
 
 type SortMode = "rating" | "nearest";
 
