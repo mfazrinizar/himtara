@@ -11,6 +11,8 @@ import {
   getGemStatsAction,
   adminUpdateGemStatusAction,
   getGemsByProximityAction,
+  revalidateAllCacheAction,
+  revalidateSpecificCacheAction,
   type GemFilters,
   type PaginationParams,
 } from "@/actions/gems";
@@ -192,6 +194,55 @@ export function useRejectGem() {
       queryClient.invalidateQueries({ queryKey: ["gem", variables.id] });
       queryClient.invalidateQueries({ queryKey: ["gems"] });
       queryClient.invalidateQueries({ queryKey: ["gem-stats"] });
+    },
+  });
+}
+
+/**
+ * Admin: Revalidate all server-side cache
+ */
+export function useRevalidateAllCache() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: () => revalidateAllCacheAction(),
+    onSuccess: () => {
+      // Also invalidate all React Query caches
+      queryClient.invalidateQueries();
+    },
+  });
+}
+
+/**
+ * Admin: Revalidate specific server-side cache
+ */
+export function useRevalidateSpecificCache() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (cacheType: "gems" | "reviews" | "stats" | "users") =>
+      revalidateSpecificCacheAction(cacheType),
+    onSuccess: (_, cacheType) => {
+      // Invalidate corresponding React Query caches
+      switch (cacheType) {
+        case "gems":
+          queryClient.invalidateQueries({ queryKey: ["gems"] });
+          queryClient.invalidateQueries({ queryKey: ["gem"] });
+          queryClient.invalidateQueries({ queryKey: ["gems-search"] });
+          queryClient.invalidateQueries({ queryKey: ["gems-proximity"] });
+          break;
+        case "reviews":
+          queryClient.invalidateQueries({ queryKey: ["reviews"] });
+          break;
+        case "stats":
+          queryClient.invalidateQueries({ queryKey: ["gem-stats"] });
+          queryClient.invalidateQueries({ queryKey: ["user-stats"] });
+          break;
+        case "users":
+          queryClient.invalidateQueries({ queryKey: ["users"] });
+          queryClient.invalidateQueries({ queryKey: ["user-stats"] });
+          break;
+      }
     },
   });
 }

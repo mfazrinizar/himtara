@@ -135,8 +135,7 @@ export async function getCurrentUserAction(): Promise<ServerActionResult<{ user:
       };
     }
 
-    // Get full user data from Firestore
-    const userDoc = await getDoc(doc(db, "users", payload.uid));
+    const userDoc = await adminDb.collection("users").doc(payload.uid).get();
     const userData = userDoc.data() as User | undefined;
 
     return {

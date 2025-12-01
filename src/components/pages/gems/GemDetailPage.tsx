@@ -13,6 +13,7 @@ import {
   ZoomOut,
   Maximize2,
   Navigation,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,11 +21,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GemDetailSkeleton } from "@/components/shared/Skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Header } from "@/components/shared/Header";
-import { createReviewAction } from "@/actions/gems";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { id as localeId } from "date-fns/locale";
-import { useGemDetail, useGemReviews } from "@/features/gems/hooks";
+import {
+  useGemDetail,
+  useGemReviews,
+  useCreateReview,
+} from "@/features/gems/hooks";
 import { toDate } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -58,11 +62,11 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
     isLoading: gemLoading,
     refetch: refetchGem,
   } = useGemDetail(gemId, user?.uid, user?.role);
-  const {
-    data: reviewsResult,
-    isLoading: reviewsLoading,
-    refetch: refetchReviews,
-  } = useGemReviews(gemId);
+  const { data: reviewsResult, isLoading: reviewsLoading } =
+    useGemReviews(gemId);
+
+  // Mutation for creating review
+  const createReviewMutation = useCreateReview();
 
   const gem = gemResult?.success ? gemResult.data : null;
   const reviews = reviewsResult?.success ? reviewsResult.data : [];
@@ -177,7 +181,7 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
     }
 
     try {
-      const result = await createReviewAction({
+      const result = await createReviewMutation.mutateAsync({
         gemId,
         userId: user.uid,
         rating,
@@ -188,8 +192,8 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
         toast.success(result.message);
         setRating(0);
         setComment("");
-        // Refetch both reviews and gem data to get updated rating
-        await Promise.all([refetchReviews(), refetchGem()]);
+        // Refetch gem data to get updated rating
+        refetchGem();
       } else {
         toast.error(result.message);
       }
@@ -369,7 +373,8 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
                             <button
                               key={star}
                               onClick={() => setRating(star)}
-                              className="focus:outline-none transition-transform hover:scale-110"
+                              disabled={createReviewMutation.isPending}
+                              className="focus:outline-none transition-transform hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <Star
                                 className={`w-6 h-6 ${
@@ -390,9 +395,24 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
                           placeholder="Bagikan pengalaman Anda di tempat ini..."
                           value={comment}
                           onChange={(e) => setComment(e.target.value)}
+                          disabled={createReviewMutation.isPending}
                         />
-                        <Button onClick={handleSubmitReview}>
-                          Kirim Ulasan
+                        <Button
+                          onClick={handleSubmitReview}
+                          disabled={
+                            createReviewMutation.isPending ||
+                            !rating ||
+                            !comment.trim()
+                          }
+                        >
+                          {createReviewMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Mengirim...
+                            </>
+                          ) : (
+                            "Kirim Ulasan"
+                          )}
                         </Button>
                       </>
                     )}

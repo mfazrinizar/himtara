@@ -2,13 +2,6 @@
 
 import {
   collection,
-  doc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  addDoc,
-  getDoc,
   getDocs,
   query,
   where,
@@ -37,6 +30,11 @@ import {
   revalidateGemCache,
   revalidateReviewsCache,
 } from "@/lib/cache";
+import {
+  validateActiveUser,
+  validateAdmin,
+  validateOwnerOrAdmin,
+} from "@/lib/auth/validate";
 
 // Helper function to convert Firestore Timestamp to plain object
 function serializeTimestamp(
@@ -511,28 +509,50 @@ export async function getGemsByProximityAction(
 
 /**
  * Create a new gem
+ * SECURITY: Requires authenticated active user, validates ownership
  */
 export async function createGemAction(
   data: CreateGemInput & { submittedBy: string }
 ): Promise<ServerActionResult<{ id: string }>> {
   try {
+    // SECURITY: Validate user is authenticated and active
+    const authResult = await validateActiveUser();
+    if (!authResult.success || !authResult.user) {
+      return {
+        success: false,
+        message: authResult.error || "Anda harus login untuk menambahkan destinasi.",
+      };
+    }
+
+    // SECURITY: Ensure submittedBy matches authenticated user
+    if (authResult.user.uid !== data.submittedBy) {
+      return {
+        success: false,
+        message: "Anda tidak memiliki izin untuk melakukan aksi ini.",
+      };
+    }
+
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const { FieldValue } = await import("firebase-admin/firestore");
+
     // Generate search keywords from name and description
     const searchKeywords = generateSearchKeywords(data.name, data.description);
     
     // Generate geohash from coordinates for proximity queries
     const geohash = encodeGeohash(data.coordinates.lat, data.coordinates.lng, 9);
     
-    const gemRef = doc(collection(db, "gems"));
-    await setDoc(gemRef, {
+    const gemRef = adminDb.collection("gems").doc();
+    await gemRef.set({
       ...data,
       id: gemRef.id,
+      submittedBy: authResult.user.uid, // Use verified UID
       status: "pending",
       ratingAvg: 0,
       reviewCount: 0,
       searchKeywords,
       geohash,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
     // Invalidate gems cache (pending gems might affect admin views)
@@ -554,32 +574,55 @@ export async function createGemAction(
 
 /**
  * Update an existing gem
+ * SECURITY: Only owner (for pending gems) or admin can update
  */
 export async function updateGemAction(
   id: string,
   data: Partial<CreateGemInput>
 ): Promise<ServerActionResult> {
   try {
-    const gemRef = doc(db, "gems", id);
-    const gemDoc = await getDoc(gemRef);
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const { FieldValue } = await import("firebase-admin/firestore");
 
-    if (!gemDoc.exists()) {
+    const gemRef = adminDb.collection("gems").doc(id);
+    const gemDoc = await gemRef.get();
+
+    if (!gemDoc.exists) {
       return {
         success: false,
         message: "Destinasi tidak ditemukan.",
       };
     }
 
+    const gemData = gemDoc.data();
+
+    // SECURITY: Validate user is owner or admin
+    const authResult = await validateOwnerOrAdmin(gemData?.submittedBy);
+    if (!authResult.success || !authResult.user) {
+      return {
+        success: false,
+        message: authResult.error || "Anda tidak memiliki izin untuk mengubah destinasi ini.",
+      };
+    }
+
+    // Non-admin can only update pending gems
+    if (!authResult.isAdmin && gemData?.status !== "pending") {
+      return {
+        success: false,
+        message: "Anda hanya dapat mengubah destinasi yang masih menunggu persetujuan.",
+      };
+    }
+
     const existingData = gemDoc.data();
     const updateData: Record<string, unknown> = {
       ...data,
-      updatedAt: serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
 
     // Regenerate search keywords if name or description changed
     if (data.name || data.description) {
-      const newName = data.name || existingData.name;
-      const newDescription = data.description || existingData.description;
+      const newName = data.name || existingData?.name;
+      const newDescription = data.description || existingData?.description;
       updateData.searchKeywords = generateSearchKeywords(newName, newDescription);
     }
 
@@ -588,7 +631,7 @@ export async function updateGemAction(
       updateData.geohash = encodeGeohash(data.coordinates.lat, data.coordinates.lng, 9);
     }
 
-    await updateDoc(gemRef, updateData);
+    await gemRef.update(updateData);
 
     // Invalidate cache for this gem and lists
     revalidateGemCache(id);
@@ -608,22 +651,44 @@ export async function updateGemAction(
 
 /**
  * Delete a gem
+ * SECURITY: Only owner (for pending gems) or admin can delete
  */
 export async function deleteGemAction(
   id: string
 ): Promise<ServerActionResult> {
   try {
-    const gemRef = doc(db, "gems", id);
-    const gemDoc = await getDoc(gemRef);
+    const { adminDb } = await import("@/lib/firebase/admin");
 
-    if (!gemDoc.exists()) {
+    const gemRef = adminDb.collection("gems").doc(id);
+    const gemDoc = await gemRef.get();
+
+    if (!gemDoc.exists) {
       return {
         success: false,
         message: "Destinasi tidak ditemukan.",
       };
     }
 
-    await deleteDoc(gemRef);
+    const gemData = gemDoc.data();
+
+    // SECURITY: Validate user is owner or admin
+    const authResult = await validateOwnerOrAdmin(gemData?.submittedBy);
+    if (!authResult.success || !authResult.user) {
+      return {
+        success: false,
+        message: authResult.error || "Anda tidak memiliki izin untuk menghapus destinasi ini.",
+      };
+    }
+
+    // Non-admin can only delete pending gems
+    if (!authResult.isAdmin && gemData?.status !== "pending") {
+      return {
+        success: false,
+        message: "Anda hanya dapat menghapus destinasi yang masih menunggu persetujuan.",
+      };
+    }
+
+    await gemRef.delete();
 
     // Invalidate cache
     revalidateGemCache(id);
@@ -657,6 +722,9 @@ async function fetchReviewsInternal(
     );
 
     const snapshot = await getDocs(reviewsQuery);
+    
+    const { adminDb } = await import("@/lib/firebase/admin");
+    
     const reviews = await Promise.all(
       snapshot.docs.map(async (reviewDoc) => {
         const data = reviewDoc.data();
@@ -665,14 +733,14 @@ async function fetchReviewsInternal(
           ...data,
         } as Review;
 
-        // Fetch user details to get displayName
         if (review.userId) {
           try {
-            const userDocRef = doc(db, "users", review.userId);
-            const userDoc = await getDoc(userDocRef);
-            if (userDoc.exists()) {
+            const userDoc = await adminDb.collection("users").doc(review.userId).get();
+            if (userDoc.exists) {
               const userData = userDoc.data();
               review.userName = userData?.displayName || "Pengguna";
+            } else {
+              review.userName = "Pengguna";
             }
           } catch (error) {
             console.error("Error fetching user for review:", error);
@@ -722,16 +790,60 @@ export async function getGemReviewsAction(
 
 /**
  * Create a review for a gem
+ * SECURITY: Validates user authentication before allowing review creation
  */
 export async function createReviewAction(
   data: CreateReviewInput
 ): Promise<ServerActionResult> {
   try {
+    // SECURITY: Verify user is authenticated via server-side token validation
+    const { cookies } = await import("next/headers");
+    const { verifyAccessToken } = await import("@/lib/auth/jwt");
+    
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get("x-access-token")?.value;
+    
+    if (!accessToken) {
+      return {
+        success: false,
+        message: "Anda harus login untuk memberi ulasan.",
+      };
+    }
+    
+    const payload = await verifyAccessToken(accessToken);
+    if (!payload) {
+      return {
+        success: false,
+        message: "Sesi Anda telah berakhir. Silakan login kembali.",
+      };
+    }
+    
+    // SECURITY: Ensure the userId matches the authenticated user
+    // This prevents users from creating reviews on behalf of others
+    if (payload.uid !== data.userId) {
+      return {
+        success: false,
+        message: "Anda tidak memiliki izin untuk melakukan aksi ini.",
+      };
+    }
+    
+    // Check if user is banned
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const { FieldValue } = await import("firebase-admin/firestore");
+    
+    const userDoc = await adminDb.collection("users").doc(payload.uid).get();
+    if (userDoc.exists && userDoc.data()?.status === "banned") {
+      return {
+        success: false,
+        message: "Akun Anda telah diblokir.",
+      };
+    }
+    
     // Validate gem exists
-    const gemRef = doc(db, "gems", data.gemId);
-    const gemDoc = await getDoc(gemRef);
+    const gemRef = adminDb.collection("gems").doc(data.gemId);
+    const gemDoc = await gemRef.get();
 
-    if (!gemDoc.exists()) {
+    if (!gemDoc.exists) {
       return {
         success: false,
         message: "Destinasi tidak ditemukan.",
@@ -739,12 +851,11 @@ export async function createReviewAction(
     }
 
     // Check if user already reviewed this gem
-    const existingReviewQuery = query(
-      collection(db, "reviews"),
-      where("gemId", "==", data.gemId),
-      where("userId", "==", data.userId)
-    );
-    const existingReviewSnapshot = await getDocs(existingReviewQuery);
+    const existingReviewSnapshot = await adminDb
+      .collection("reviews")
+      .where("gemId", "==", data.gemId)
+      .where("userId", "==", payload.uid) // Use verified UID, not user-provided
+      .get();
     
     if (!existingReviewSnapshot.empty) {
       return {
@@ -753,18 +864,21 @@ export async function createReviewAction(
       };
     }
 
-    // Add review
-    await addDoc(collection(db, "reviews"), {
-      ...data,
-      createdAt: serverTimestamp(),
+    // Add review with verified userId
+    await adminDb.collection("reviews").add({
+      gemId: data.gemId,
+      userId: payload.uid, // Use verified UID from token
+      rating: data.rating,
+      comment: data.comment,
+      createdAt: FieldValue.serverTimestamp(),
     });
 
     // Update gem rating (recalculate average)
-    const reviewsQuery = query(
-      collection(db, "reviews"),
-      where("gemId", "==", data.gemId)
-    );
-    const reviewsSnapshot = await getDocs(reviewsQuery);
+    const reviewsSnapshot = await adminDb
+      .collection("reviews")
+      .where("gemId", "==", data.gemId)
+      .get();
+    
     const reviews = reviewsSnapshot.docs.map((doc) => doc.data() as Review);
 
     const totalRating = reviews.reduce(
@@ -773,10 +887,10 @@ export async function createReviewAction(
     );
     const avgRating = reviews.length > 0 ? totalRating / reviews.length : 0;
 
-    await updateDoc(gemRef, {
+    await gemRef.update({
       ratingAvg: avgRating,
       reviewCount: reviews.length,
-      updatedAt: serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
     // Invalidate caches - reviews affect gem ratings
@@ -804,22 +918,34 @@ export async function adminApproveGemAction(
   verifiedBy: string
 ): Promise<ServerActionResult> {
   try {
-    const gemRef = doc(db, "gems", id);
-    const gemDoc = await getDoc(gemRef);
+    // Validate admin access
+    const validation = await validateAdmin();
+    if (!validation.success) {
+      return { success: false, message: validation.error! };
+    }
 
-    if (!gemDoc.exists()) {
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const { FieldValue } = await import("firebase-admin/firestore");
+
+    const gemRef = adminDb.collection("gems").doc(id);
+    const gemDoc = await gemRef.get();
+
+    if (!gemDoc.exists) {
       return {
         success: false,
         message: "Destinasi tidak ditemukan.",
       };
     }
 
-    await updateDoc(gemRef, {
+    await gemRef.update({
       status: "approved",
       verifiedBy,
-      verifiedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      verifiedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
+
+    // Invalidate cache
+    revalidateGemCache(id);
 
     return {
       success: true,
@@ -842,21 +968,33 @@ export async function adminRejectGemAction(
   reason?: string
 ): Promise<ServerActionResult> {
   try {
-    const gemRef = doc(db, "gems", id);
-    const gemDoc = await getDoc(gemRef);
+    // Validate admin access
+    const validation = await validateAdmin();
+    if (!validation.success) {
+      return { success: false, message: validation.error! };
+    }
 
-    if (!gemDoc.exists()) {
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const { FieldValue } = await import("firebase-admin/firestore");
+
+    const gemRef = adminDb.collection("gems").doc(id);
+    const gemDoc = await gemRef.get();
+
+    if (!gemDoc.exists) {
       return {
         success: false,
         message: "Destinasi tidak ditemukan.",
       };
     }
 
-    await updateDoc(gemRef, {
+    await gemRef.update({
       status: "rejected",
       rejectionReason: reason || "Tidak memenuhi kriteria",
-      updatedAt: serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
+
+    // Invalidate cache
+    revalidateGemCache(id);
 
     return {
       success: true,
@@ -881,10 +1019,19 @@ export async function adminUpdateGemStatusAction(
   reason?: string
 ): Promise<ServerActionResult> {
   try {
-    const gemRef = doc(db, "gems", id);
-    const gemDoc = await getDoc(gemRef);
+    // Validate admin access
+    const validation = await validateAdmin();
+    if (!validation.success) {
+      return { success: false, message: validation.error! };
+    }
 
-    if (!gemDoc.exists()) {
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const { FieldValue } = await import("firebase-admin/firestore");
+
+    const gemRef = adminDb.collection("gems").doc(id);
+    const gemDoc = await gemRef.get();
+
+    if (!gemDoc.exists) {
       return {
         success: false,
         message: "Destinasi tidak ditemukan.",
@@ -893,19 +1040,19 @@ export async function adminUpdateGemStatusAction(
 
     const updateData: Record<string, unknown> = {
       status,
-      updatedAt: serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
 
     if (status === "approved") {
       updateData.verifiedBy = verifiedBy;
-      updateData.verifiedAt = serverTimestamp();
+      updateData.verifiedAt = FieldValue.serverTimestamp();
       // Clear rejection reason when approving
       updateData.rejectionReason = null;
     } else if (status === "rejected") {
       updateData.rejectionReason = reason || "Tidak memenuhi kriteria";
     }
 
-    await updateDoc(gemRef, updateData);
+    await gemRef.update(updateData);
 
     // Invalidate cache - status change affects public listing
     revalidateGemCache(id);
@@ -994,4 +1141,95 @@ export async function getGemStatsAction(): Promise<
   }>
 > {
   return getCachedGemStats();
+}
+
+/**
+ * Admin: Revalidate all caches
+ */
+export async function revalidateAllCacheAction(): Promise<ServerActionResult> {
+  try {
+    // Validate admin access
+    const validation = await validateAdmin();
+    if (!validation.success) {
+      return { success: false, message: validation.error! };
+    }
+
+    const { revalidateTag } = await import("next/cache");
+    
+    // Revalidate all cache tags
+    revalidateTag(CACHE_TAGS.GEMS_LIST, "max");
+    revalidateTag(CACHE_TAGS.GEMS_APPROVED, "max");
+    revalidateTag(CACHE_TAGS.GEMS_SEARCH, "max");
+    revalidateTag(CACHE_TAGS.GEM_STATS, "max");
+    revalidateTag(CACHE_TAGS.REVIEWS, "max");
+    revalidateTag(CACHE_TAGS.USER_STATS, "max");
+
+    return {
+      success: true,
+      message: "Semua cache berhasil di-refresh.",
+    };
+  } catch (error) {
+    console.error("Error revalidating all cache:", error);
+    return {
+      success: false,
+      message: "Gagal me-refresh cache.",
+    };
+  }
+}
+
+/**
+ * Admin: Revalidate specific cache type
+ */
+export async function revalidateSpecificCacheAction(
+  cacheType: "gems" | "reviews" | "stats" | "users"
+): Promise<ServerActionResult> {
+  try {
+    // Validate admin access
+    const validation = await validateAdmin();
+    if (!validation.success) {
+      return { success: false, message: validation.error! };
+    }
+
+    const { revalidateTag } = await import("next/cache");
+    
+    let message = "";
+    
+    switch (cacheType) {
+      case "gems":
+        revalidateTag(CACHE_TAGS.GEMS_LIST, "max");
+        revalidateTag(CACHE_TAGS.GEMS_APPROVED, "max");
+        revalidateTag(CACHE_TAGS.GEMS_SEARCH, "max");
+        message = "Cache destinasi berhasil di-refresh.";
+        break;
+      case "reviews":
+        revalidateTag(CACHE_TAGS.REVIEWS, "max");
+        message = "Cache ulasan berhasil di-refresh.";
+        break;
+      case "stats":
+        revalidateTag(CACHE_TAGS.GEM_STATS, "max");
+        revalidateTag(CACHE_TAGS.USER_STATS, "max");
+        message = "Cache statistik berhasil di-refresh.";
+        break;
+      case "users":
+        revalidateTag(CACHE_TAGS.USER_STATS, "max");
+        message = "Cache pengguna berhasil di-refresh.";
+        break;
+      default:
+        return {
+          success: false,
+          message: "Tipe cache tidak valid.",
+        };
+    }
+
+    return {
+      success: true,
+      message,
+    };
+  } catch (error) {
+    console.error("Error revalidating specific cache:", error);
+    return {
+      success: false,
+      message: "Gagal me-refresh cache.",
+    };
+  }
 }

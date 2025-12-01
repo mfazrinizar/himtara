@@ -1,18 +1,29 @@
 "use server";
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  orderBy,
-  limit,
-  serverTimestamp,
-  query,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
 import type { ServerActionResult, User, UserRole, UserStatus } from "@/types/firestore";
+import { validateAdmin, validateAuth } from "@/lib/auth/validate";
+
+// Helper function to serialize Firestore Admin SDK Timestamp to plain object
+function serializeTimestamp(
+  timestamp: { _seconds: number; _nanoseconds: number } | { seconds: number; nanoseconds: number } | undefined | null
+): { seconds: number; nanoseconds: number } | undefined {
+  if (!timestamp) return undefined;
+  // Handle Admin SDK format (_seconds) or regular format (seconds)
+  const seconds = '_seconds' in timestamp ? timestamp._seconds : timestamp.seconds;
+  const nanoseconds = '_nanoseconds' in timestamp ? timestamp._nanoseconds : timestamp.nanoseconds;
+  return { seconds, nanoseconds };
+}
+
+// Helper function to serialize a user document for client components
+function serializeUser(user: User): User {
+  return {
+    ...user,
+    createdAt: serializeTimestamp(user.createdAt as unknown as { _seconds: number; _nanoseconds: number } | undefined),
+    lastLoginAt: serializeTimestamp(user.lastLoginAt as unknown as { _seconds: number; _nanoseconds: number } | undefined),
+    updatedAt: serializeTimestamp(user.updatedAt as unknown as { _seconds: number; _nanoseconds: number } | undefined),
+    bannedAt: serializeTimestamp(user.bannedAt as unknown as { _seconds: number; _nanoseconds: number } | undefined),
+  } as User;
+}
 
 // Types for user management
 export interface UserFilters {
@@ -39,13 +50,22 @@ export interface PaginatedResponse<T> {
 }
 
 /**
- * Get paginated and filtered list of users
+ * Get paginated and filtered list of users (Admin only)
  */
 export async function getUsersAction(
   filters: UserFilters = {},
   pagination: PaginationParams = {}
 ): Promise<ServerActionResult<PaginatedResponse<User>>> {
   try {
+    // Validate admin access
+    const validation = await validateAdmin();
+    if (!validation.success) {
+      console.error("getUsersAction validation failed:", validation.error);
+      return { success: false, message: validation.error! };
+    }
+
+    const { adminDb } = await import("@/lib/firebase/admin");
+
     const {
       role,
       status,
@@ -56,12 +76,12 @@ export async function getUsersAction(
 
     const { page = 1, pageSize = 20 } = pagination;
 
-    // Fetch all users (simplified to avoid Firestore composite index requirements)
-    const snapshot = await getDocs(collection(db, "users"));
-    let users = snapshot.docs.map((doc) => ({
+    // Fetch all users using Admin SDK
+    const snapshot = await adminDb.collection("users").get();
+    let users = snapshot.docs.map((doc) => serializeUser({
       ...doc.data(),
       uid: doc.id,
-    })) as User[];
+    } as User));
 
     // Client-side filtering
     if (role) {
@@ -105,7 +125,7 @@ export async function getUsersAction(
       success: true,
       message: "Berhasil mengambil data pengguna.",
       data: {
-        data: paginatedUsers,
+        data: paginatedUsers.map(serializeUser),
         pagination: {
           page,
           pageSize,
@@ -124,15 +144,33 @@ export async function getUsersAction(
 }
 
 /**
- * Get a single user by ID
+ * Get a single user by ID (Admin or self)
  */
 export async function getUserByIdAction(
   uid: string
 ): Promise<ServerActionResult<User>> {
   try {
-    const userDoc = await getDoc(doc(db, "users", uid));
+    // Validate authentication
+    const validation = await validateAuth();
+    if (!validation.success) {
+      return { success: false, message: validation.error! };
+    }
 
-    if (!userDoc.exists()) {
+    // Only allow admin or self to view user data
+    const isAdmin = validation.user?.role === "admin";
+    const isSelf = validation.user?.uid === uid;
+    
+    if (!isAdmin && !isSelf) {
+      return {
+        success: false,
+        message: "Anda tidak memiliki izin untuk melihat data pengguna ini.",
+      };
+    }
+
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const userDoc = await adminDb.collection("users").doc(uid).get();
+
+    if (!userDoc.exists) {
       return {
         success: false,
         message: "Pengguna tidak ditemukan.",
@@ -142,10 +180,10 @@ export async function getUserByIdAction(
     return {
       success: true,
       message: "Berhasil mengambil data pengguna.",
-      data: {
+      data: serializeUser({
         ...userDoc.data(),
         uid: userDoc.id,
-      } as User,
+      } as User),
     };
   } catch (error) {
     console.error("Error fetching user:", error);
@@ -157,26 +195,43 @@ export async function getUserByIdAction(
 }
 
 /**
- * Update user role
+ * Update user role (Admin only)
  */
 export async function updateUserRoleAction(
   uid: string,
   role: UserRole
 ): Promise<ServerActionResult> {
   try {
-    const userRef = doc(db, "users", uid);
-    const userDoc = await getDoc(userRef);
+    // Validate admin access
+    const validation = await validateAdmin();
+    if (!validation.success) {
+      return { success: false, message: validation.error! };
+    }
 
-    if (!userDoc.exists()) {
+    // Prevent admin from changing their own role
+    if (validation.user?.uid === uid) {
+      return {
+        success: false,
+        message: "Anda tidak dapat mengubah role sendiri.",
+      };
+    }
+
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const { FieldValue } = await import("firebase-admin/firestore");
+
+    const userRef = adminDb.collection("users").doc(uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
       return {
         success: false,
         message: "Pengguna tidak ditemukan.",
       };
     }
 
-    await updateDoc(userRef, {
+    await userRef.update({
       role,
-      updatedAt: serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
     return {
@@ -193,7 +248,7 @@ export async function updateUserRoleAction(
 }
 
 /**
- * Ban/unban a user
+ * Ban/unban a user (Admin only)
  */
 export async function updateUserStatusAction(
   uid: string,
@@ -201,10 +256,27 @@ export async function updateUserStatusAction(
   reason?: string
 ): Promise<ServerActionResult> {
   try {
-    const userRef = doc(db, "users", uid);
-    const userDoc = await getDoc(userRef);
+    // Validate admin access
+    const validation = await validateAdmin();
+    if (!validation.success) {
+      return { success: false, message: validation.error! };
+    }
 
-    if (!userDoc.exists()) {
+    // Prevent admin from banning themselves
+    if (validation.user?.uid === uid) {
+      return {
+        success: false,
+        message: "Anda tidak dapat mengubah status akun sendiri.",
+      };
+    }
+
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const { FieldValue } = await import("firebase-admin/firestore");
+
+    const userRef = adminDb.collection("users").doc(uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
       return {
         success: false,
         message: "Pengguna tidak ditemukan.",
@@ -213,15 +285,15 @@ export async function updateUserStatusAction(
 
     const updateData: Record<string, unknown> = {
       status,
-      updatedAt: serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
 
     if (status === "banned" && reason) {
       updateData.banReason = reason;
-      updateData.bannedAt = serverTimestamp();
+      updateData.bannedAt = FieldValue.serverTimestamp();
     }
 
-    await updateDoc(userRef, updateData);
+    await userRef.update(updateData);
 
     return {
       success: true,
@@ -240,7 +312,7 @@ export async function updateUserStatusAction(
 }
 
 /**
- * Get user statistics (uses Admin SDK to bypass rules)
+ * Get user statistics (Admin only)
  */
 export async function getUserStatsAction(): Promise<
   ServerActionResult<{
@@ -252,6 +324,12 @@ export async function getUserStatsAction(): Promise<
   }>
 > {
   try {
+    // Validate admin access
+    const validation = await validateAdmin();
+    if (!validation.success) {
+      return { success: false, message: validation.error! };
+    }
+
     const { adminDb } = await import("@/lib/firebase/admin");
     const usersSnapshot = await adminDb.collection("users").get();
     const users = usersSnapshot.docs.map((doc) => doc.data() as User);
@@ -279,13 +357,19 @@ export async function getUserStatsAction(): Promise<
 }
 
 /**
- * Search users by name or email
+ * Search users by name or email (Admin only)
  */
 export async function searchUsersAction(
   searchQuery: string,
   limitCount: number = 10
 ): Promise<ServerActionResult<User[]>> {
   try {
+    // Validate admin access
+    const validation = await validateAdmin();
+    if (!validation.success) {
+      return { success: false, message: validation.error! };
+    }
+
     if (!searchQuery || searchQuery.trim().length < 2) {
       return {
         success: false,
@@ -293,20 +377,22 @@ export async function searchUsersAction(
       };
     }
 
-    const usersQuery = query(
-      collection(db, "users"),
-      orderBy("displayName"),
-      limit(50) // Get more to filter client-side
-    );
+    const { adminDb } = await import("@/lib/firebase/admin");
 
-    const snapshot = await getDocs(usersQuery);
+    // Fetch users and filter client-side
+    const snapshot = await adminDb
+      .collection("users")
+      .orderBy("displayName")
+      .limit(50)
+      .get();
+
     const searchLower = searchQuery.toLowerCase();
 
     const results = snapshot.docs
-      .map((doc) => ({
+      .map((doc) => serializeUser({
         ...doc.data(),
         uid: doc.id,
-      }) as User)
+      } as User))
       .filter(
         (user) =>
           user.displayName?.toLowerCase().includes(searchLower) ||
