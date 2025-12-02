@@ -9,8 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  ZoomIn,
-  ZoomOut,
   Maximize2,
   Navigation,
   Loader2,
@@ -156,17 +154,17 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
     setZoomLevel(1);
   };
 
-  const zoomIn = () => {
-    setZoomLevel((prev) => Math.min(prev + 0.5, 3));
-  };
+  // const zoomIn = () => {
+  //   setZoomLevel((prev) => Math.min(prev + 0.5, 3));
+  // };
 
-  const zoomOut = () => {
-    setZoomLevel((prev) => Math.max(prev - 0.5, 1));
-  };
+  // const zoomOut = () => {
+  //   setZoomLevel((prev) => Math.max(prev - 0.5, 1));
+  // };
 
-  const resetZoom = () => {
-    setZoomLevel(1);
-  };
+  // const resetZoom = () => {
+  //   setZoomLevel(1);
+  // };
 
   const handleSubmitReview = async () => {
     if (!user || !user.uid) {
@@ -226,7 +224,13 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
                 priority
                 quality={85}
               />
-              <div className="absolute top-4 right-4 bg-background/80 hover:bg-background px-3 py-2 rounded-full transition-colors flex items-center gap-2">
+              <div
+                className="absolute top-4 right-4 bg-black/35 text-white/80 hover:text-white hover:bg-black/80  px-3 py-2 rounded-full transition-colors flex items-center gap-2"
+                style={{
+                  WebkitBackdropFilter: "blur(6px)",
+                  backdropFilter: "blur(6px)",
+                }}
+              >
                 <Maximize2 className="w-4 h-4" />
                 <span className="text-sm font-medium">Lihat Galeri</span>
               </div>
@@ -235,14 +239,18 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
               <>
                 <button
                   onClick={prevImage}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background p-2 rounded-full transition-colors"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white hover:bg-black/80 p-2 rounded-full transition-colors"
+                  style={{
+                    WebkitBackdropFilter: "blur(6px)",
+                    backdropFilter: "blur(6px)",
+                  }}
                   aria-label="Previous image"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
                 <button
                   onClick={nextImage}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-background/80 hover:bg-background p-2 rounded-full transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white hover:bg-black/80 p-2 rounded-full transition-colors"
                   aria-label="Next image"
                 >
                   <ChevronRight className="w-6 h-6" />
@@ -489,7 +497,7 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
                 transition={{ duration: 0.3, delay: 0.1 }}
                 className="absolute top-4 left-4 flex flex-col gap-2 z-[10000]"
               >
-                <button
+                {/* <button
                   onClick={(e) => {
                     e.stopPropagation();
                     zoomIn();
@@ -499,8 +507,8 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
                   aria-label="Zoom in"
                 >
                   <ZoomIn className="w-6 h-6 text-white" />
-                </button>
-                <button
+                </button> */}
+                {/* <button
                   onClick={(e) => {
                     e.stopPropagation();
                     zoomOut();
@@ -510,8 +518,8 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
                   aria-label="Zoom out"
                 >
                   <ZoomOut className="w-6 h-6 text-white" />
-                </button>
-                {zoomLevel > 1 && (
+                </button> */}
+                {/* {zoomLevel > 1 && (
                   <motion.button
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -525,7 +533,7 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
                   >
                     Reset
                   </motion.button>
-                )}
+                )} */}
                 <div className="bg-white/10 px-3 py-2 rounded-full text-white text-sm font-medium text-center backdrop-blur-sm">
                   {Math.round(zoomLevel * 100)}%
                 </div>
