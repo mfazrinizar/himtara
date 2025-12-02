@@ -239,18 +239,14 @@ export function GemDetailPage({ gemId }: GemDetailPageProps) {
               <>
                 <button
                   onClick={prevImage}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white hover:bg-black/80 p-2 rounded-full transition-colors"
-                  style={{
-                    WebkitBackdropFilter: "blur(6px)",
-                    backdropFilter: "blur(6px)",
-                  }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/35 text-white/80 hover:text-white hover:bg-black/80 p-2 rounded-full transition-colors"
                   aria-label="Previous image"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
                 <button
                   onClick={nextImage}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white hover:bg-black/80 p-2 rounded-full transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/35 text-white/80 hover:text-white hover:bg-black/80 p-2 rounded-full transition-colors"
                   aria-label="Next image"
                 >
                   <ChevronRight className="w-6 h-6" />
