@@ -11,6 +11,7 @@ import {
   Shield,
   Sparkles,
   GemIcon,
+  TreePalm,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import Link from "next/link";
@@ -20,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
-import type { Gem } from "@/types/firestore";
+import { ISLANDS, type Gem } from "@/types/firestore";
 import { GemCardSkeleton } from "@/components/shared/Skeleton";
 import { useGemList, useGemStats } from "@/features/gems/hooks";
 import { useRouter } from "next/navigation";
@@ -522,6 +523,8 @@ function GemCard({ gem }: { gem: Gem }) {
           <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground text-xs sm:text-sm">
             <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>{gem.reviewCount} ulasan</span>
+            <TreePalm className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-3" />
+              <span>{ISLANDS.find( island => gem.island === island.value)?.label}</span>
           </div>
         </CardContent>
       </Card>

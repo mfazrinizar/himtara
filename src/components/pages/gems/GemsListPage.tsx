@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, MapPin, Star, Navigation, Loader2 } from "lucide-react";
+import { Search, MapPin, Star, Navigation, Loader2, TreePalm } from "lucide-react";
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -547,6 +547,8 @@ function GemCard({ gem, distance }: GemCardProps) {
             <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground">
               <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>{gem.reviewCount} ulasan</span>
+              <TreePalm className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-3" />
+              <span>{ISLANDS.find( island => gem.island === island.value)?.label}</span>
             </div>
             <span className="text-primary font-medium group-hover:gap-2 transition-all">
               Lihat Detail →
